@@ -1048,7 +1048,7 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
   const bodyG = new THREE.BufferGeometry();
   bodyG.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   bodyG.setIndex(idx); bodyG.computeVertexNormals();
-  const bodyMesh = new THREE.Mesh(bodyG, mat(0x1c1d21, { roughness: 0.32, metalness: 0.05 }));
+  const bodyMesh = new THREE.Mesh(bodyG, mat(0x0d0e10, { roughness: 0.4, metalness: 0.05 }));
   bodyMesh.castShadow = bodyMesh.receiveShadow = true; ms.add(bodyMesh);
 
   // Base plate showing as a lip under the shell
@@ -1057,7 +1057,7 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
   for (let i = NT; i >= 0; i--) { const p = S(i / NT, Math.PI); outline.push(new THREE.Vector2(p.x * 0.985, -p.z)); }
   const baseG = new THREE.ExtrudeGeometry(new THREE.Shape(outline), { depth: B + 0.05, bevelEnabled: false });
   baseG.rotateX(-Math.PI / 2);
-  const base = new THREE.Mesh(baseG, mat(0x2c2f35, { roughness: 0.6 })); base.castShadow = true; ms.add(base);
+  const base = new THREE.Mesh(baseG, mat(0x1f2126, { roughness: 0.6 })); base.castShadow = true; ms.add(base);
 
   // Raised panels that follow the shell: main buttons, DPI, thumb buttons, rubber grips
   function patch(t0, t1, a0, a1, o, m, { dip = 0, wall = 0.12, nu = 18, nv = 26 } = {}) {
@@ -1084,8 +1084,8 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
     const mesh = new THREE.Mesh(g, m); mesh.castShadow = mesh.receiveShadow = true; ms.add(mesh);
     return mesh;
   }
-  const btnM = mat(0x24252a, { roughness: 0.55, side: THREE.DoubleSide });
-  const trimM = mat(0x34373e, { roughness: 0.45, side: THREE.DoubleSide });
+  const btnM = mat(0x131417, { roughness: 0.6, side: THREE.DoubleSide });
+  const trimM = mat(0x24262b, { roughness: 0.5, side: THREE.DoubleSide });
   // The split between the buttons widens around the scroll wheel
   const gap = (v) => { const t = v * 0.42; return Math.PI * (0.0015 + (t > 0.05 && t < 0.3 ? 0.02 * Math.sin((Math.PI * (t - 0.05)) / 0.25) : 0)); };
   patch(0, 0.42, Math.PI * 0.25, (v) => Math.PI / 2 - gap(v), 0.06, btnM, { dip: 0.05 });
