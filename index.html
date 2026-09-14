@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive 3D gaming PC build: click any part to orbit around it and read its specs, price, and why it was chosen.">
+<meta property="og:title" content="RTX 5080 Build">
+<meta property="og:description" content="Interactive 3D gaming PC build: click any part to orbit around it and read its specs and price.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#ffffff">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0;-webkit-tap-highlight-color:transparent}[hidden]{display:none!important}</style>
+<title>RTX 5080 Build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #ffffff;
+    --ink: #15171c;
+    --muted: #646a75;
+    --hair: #e3e6eb;
+    --accent: #1a56ff;
+    --accent-soft: #e8eeff;
+    --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+  .brand {
+    position: fixed; top: 20px; left: 24px; z-index: 3;
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  .brand b { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .brand span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .hint {
+    position: fixed; top: 22px; right: 24px; z-index: 3;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none;
+  }
+
+  /* Spec sheet */
+  #panel {
+    position: fixed; z-index: 2;
+    top: 50%; right: clamp(16px, 5vw, 72px);
+    transform: translateY(-54%);
+    width: min(420px, 38vw);
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+    padding-block: 8px;
+  }
+  #panel .inner {
+    transition: opacity .35s ease, transform .35s ease;
+    background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    padding: 22px 24px; border-radius: 6px;
+  }
+  #panel.swap .inner { opacity: 0; transform: translateX(14px); }
+  .eyebrow {
+    display: flex; gap: 10px; align-items: center;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  .eyebrow .slot { color: var(--accent); background: var(--accent-soft); padding: 3px 7px; border-radius: 3px; }
+  .ptype {
+    margin-top: 18px;
+    font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+  }
+  h1 {
+    margin: 6px 0 0;
+    font-family: var(--display); font-weight: 700; font-size: clamp(24px, 2.5vw, 34px); line-height: 1.08;
+    text-wrap: balance; letter-spacing: -0.005em;
+  }
+  .price {
+    margin-top: 14px; display: flex; align-items: baseline; gap: 10px;
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .price strong { font-size: 22px; font-weight: 500; color: var(--accent); }
+  .price small { font-size: 12px; color: var(--muted); }
+  .rule { height: 1px; background: var(--hair); margin: 20px 0 18px; }
+  ul.points { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  ul.points li {
+    position: relative; padding-left: 22px;
+    font-size: 15px; line-height: 1.55; max-width: 62ch;
+  }
+  ul.points li::before {
+    content: ""; position: absolute; left: 2px; top: 0.62em;
+    width: 8px; height: 8px; border: 1.5px solid var(--accent); transform: rotate(45deg);
+  }
+
+  /* Overview list */
+  .lead { margin: 12px 0 0; font-size: 15px; line-height: 1.55; color: var(--muted); max-width: 46ch; }
+  .parts { list-style: none; margin: 0; padding: 0; }
+  .parts button {
+    width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline;
+    padding: 7px 4px; border: 0; border-bottom: 1px solid var(--hair); background: none; cursor: pointer;
+    font: inherit; color: var(--ink); text-align: left;
+  }
+  .parts button:hover { background: var(--accent-soft); }
+  .parts .n { font-size: 14px; }
+  .parts .n em { font-style: normal; font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: block; }
+  .parts .p { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .total {
+    display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline; padding: 14px 4px 0;
+  }
+  .total span { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+  .total strong { font-family: var(--mono); font-weight: 500; font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .total small { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+
+  /* Bottom navigation */
+  nav.deck {
+    position: fixed; z-index: 3; left: 50%; bottom: 22px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 16px;
+    padding: 8px; background: rgba(255,255,255,.92); border: 1px solid var(--hair); border-radius: 999px;
+    backdrop-filter: blur(6px);
+  }
+  nav.deck .arrow {
+    width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ink); background: var(--ink); color: #fff;
+    display: grid; place-items: center; cursor: pointer; transition: transform .15s ease, background .15s ease;
+  }
+  nav.deck .arrow:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  nav.deck .arrow:active:not(:disabled) { transform: scale(.94); }
+  nav.deck .arrow:disabled { background: #fff; color: #b9bec7; border-color: var(--hair); cursor: default; }
+  nav.deck .arrow svg { width: 20px; height: 20px; }
+  .mid { display: grid; justify-items: center; gap: 6px; min-width: 190px; }
+  .mid .label { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dots { display: flex; gap: 6px; }
+  .dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: #cfd3da; cursor: pointer; transition: width .25s ease, background .25s ease; }
+  .dots button.on { width: 20px; border-radius: 4px; background: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  #tip {
+    position: fixed; z-index: 4; pointer-events: none; padding: 5px 9px; border-radius: 4px;
+    background: var(--ink); color: #fff; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; white-space: nowrap;
+    transform: translate(14px, 14px);
+  }
+
+  #fallback { position: fixed; left: 24px; top: 70px; max-width: 36ch; font-size: 14px; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .hint { display: none; }
+    #panel {
+      top: auto; right: 0; left: 0; bottom: 96px; transform: none;
+      width: auto; max-height: 44vh; padding-inline: 20px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 28px);
+      padding-top: 30px;
+    }
+    #panel .inner { padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    h1 { font-size: 23px; }
+    ul.points { gap: 10px; }
+    ul.points li { font-size: 14px; }
+    .mid { min-width: 120px; }
+    .dots { display: none; }
+    nav.deck { bottom: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #panel .inner, .dots button, nav.deck .arrow { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage" aria-label="3D model of the PC build. Click a part to inspect it."></div>
+
+<div class="brand"><b>RTX 5080 Build</b><span>Ryzen 5 7600X · 32GB DDR5 · QHD 32″</span></div>
+<div class="hint">Drag to look around · Click a part</div>
+
+<aside id="panel" aria-live="polite"><div class="inner" id="panelInner"></div></aside>
+
+<nav class="deck" aria-label="Slides">
+  <button class="arrow" id="prev" aria-label="Previous part">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="mid">
+    <div class="label" id="slideLabel">Overview</div>
+    <div class="dots" id="dots"></div>
+  </div>
+  <button class="arrow" id="next" aria-label="Next part">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
+</nav>
+
+<div id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ---------- Content ---------- */
+const PARTS = [
+  { id: "cpu", type: "Processor", slot: "Socket AM5", name: "AMD Ryzen 5 7600X 6-Core, 12-Thread Unlocked Desktop Processor", price: 180,
+    points: [
+      "An affordable CPU that offers great bang for your buck",
+      "This CPU has enough power and speed to pair with a high to midrange GPU",
+      "Leaves upgrading possible, as it runs on the AM5 socket",
+      "Difficult to overclock, as the processor already pushes itself to its performance limit as soon as you receive it",
+      "Most competitive PvP games run at 100–300 fps"
+    ] },
+  { id: "cooler", type: "CPU Cooler", slot: "CPU_FAN", name: "ID-Cooling SE-214-XT V2 Black CPU Air Cooler, Full Memory Clearance, 200W", price: 18.99,
+    points: [
+      "Offers a 120mm fan that moves more air and helps cool the CPU more effectively",
+      "The single-tower design ensures great compatibility with the RAM and motherboard",
+      "The V2 features a mounting bracket that is compatible with both Intel and AMD platforms",
+      "This is necessary for cooling down the CPU"
+    ] },
+  { id: "mobo", type: "Motherboard", slot: "ATX · X870E", name: "ASUS ROG Crosshair X870E Hero AMD X870E AM5 ATX Motherboard", price: 560,
+    points: [
+      "Pairs perfectly with the AMD Ryzen 5 7600X, with the AM5 socket that the CPU requires",
+      "The motherboard reduces latency for online gaming thanks to Dual LAN, so it can connect to two Ethernet ports",
+      "The ASUS ROG is overall the best motherboard money can buy. This matters for gaming, as it acts like a stable foundation that lets the CPU, GPU, and RAM work at their maximum output"
+    ] },
+  { id: "gpu", type: "Graphics Card", slot: "PCIEX16_1", name: "NVIDIA GeForce RTX 5080 Founders Edition", price: 2099,
+    points: [
+      "The GPU is one of the most necessary components for a gaming PC, as it allows 4K gaming as well as 200+ frames, which is extremely important for gaming",
+      "This is one of the most expensive parts, as it is one of the most vital ones",
+      "For multiplayer games, stats commonly include 200 FPS at 4K resolution",
+      "This GPU also includes 18 gigabytes of RAM"
+    ] },
+  { id: "case", type: "Case", slot: "Full Tower · E-ATX", name: "Antec C8 Full-Tower E-ATX PC Case, Dual-Chamber", price: 99,
+    points: [
+      "This case is compatible with all of the previous components",
+      "A case is necessary for gaming, as it is where all the components live",
+      "This case is made of tempered glass and solid plastic material"
+    ] },
+  { id: "ram", type: "Memory", slot: "DIMM_A2 · DIMM_B2", name: "Corsair Vengeance RGB RS DDR5 (32GB, 2×16GB)", price: 505,
+    points: [
+      "RAM is very important for gaming, as it acts as high-speed short-term storage that holds active game data and sends it to your processor",
+      "This RAM has dual memory profiles that let you easily select optimized settings for your platform",
+      "The Corsair Vengeance already comes with voltage regulation"
+    ] },
+  { id: "ssd", type: "Storage", slot: "M.2_1", name: "Ediloca 512GB NVMe M.2 SSD PCIe Gen 3×4", price: 79,
+    points: [
+      "This drive is less important for a competitive gamer, as most competitive gamers choose one or two games to be good at. This allows saving some money with a cheaper drive",
+      "This drive comes with 512GB of storage, so it can still be used for other games, but it is on the smaller side compared to other SSDs"
+    ] },
+  { id: "psu", type: "Power Supply", slot: "ATX_24PIN · 12V-2×6", name: "Rosewill VMG 750W 80+ Gold ATX", price: null,
+    points: [
+      "This power supply has 750W and also delivers 600W directly to power new graphics cards such as the RTX 5080",
+      "This power supply offers 235% power excursion",
+      "The Rosewill VMG has optimized thermal control in the form of large vents and a 120mm FDB fan, allowing it to perform well without the risk of overheating"
+    ] },
+  { id: "mouse", type: "Mouse", slot: "2.4GHz · Bluetooth", name: "Razer Basilisk V3 X HyperSpeed Customizable Wireless Gaming Mouse, Black", price: 50,
+    points: [
+      "An ergonomic mouse with seamless low-latency performance that's faster than other wireless mice",
+      "This mouse offers 535 hours of battery life, so you don't have to worry about recharging it",
+      "The Razer mouse has gold-plated contact points, so the switches are less prone to degrading"
+    ] },
+  { id: "monitor", type: "Monitor", slot: "2560 × 1440 · DP 1.2", name: "Samsung 32″ Odyssey G5 Series QHD Gaming Monitor", price: 199,
+    points: [
+      "This monitor delivers brilliant visuals at a high 2560×1440 resolution",
+      "The monitor allows for ultra-fast reactions and ultra-smooth gaming",
+      "This monitor is important for gaming, as it lets you see the game you are playing"
+    ] },
+  { id: "keyboard", type: "Keyboard", slot: "USB-C · 2.4GHz", name: "AULA S99 Gaming Keyboard, Ergonomic Computer Keyboard", price: 29,
+    points: [
+      "This keyboard has ergonomic support and comes with an adjustable volume dial",
+      "The AULA has a large battery to provide more power and longer battery life",
+      "The keyboard has customizable macro buttons, allowing you to do whatever you want with your keys"
+    ] },
+  { id: "headset", type: "Headset", slot: "3.5mm · 40mm drivers", name: "Logitech G335 Wired Gaming Headset", price: 29,
+    points: [
+      "A lightweight headset that weighs only 8.5 oz. It is smaller than other headsets, features a suspension headband to help distribute weight, and is very adjustable",
+      "The G335 headset features soft memory foam ear pads that are comfortable for extended use",
+      "The 40mm neodymium drivers allow the headset to deliver crisp, clear audio",
+      "This is important for gaming, as in competitive team games hearing everything and communicating is very important to win"
+    ] }
+];
+/* ---------- Scene ---------- */
+const stage = document.getElementById("stage");
+const panelInner = document.getElementById("panelInner");
+let renderer;
+try {
+  if (!window.THREE) throw new Error("three.js did not load");
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (err) {
+  panelInner.innerHTML = '<p class="lead">The 3D viewer could not start. Reload the page, or open it in a browser with WebGL turned on.</p>';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.5, 4000);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd6dce5, 0.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+keyLight.position.set(90, 190, 140);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+Object.assign(keyLight.shadow.camera, { left: -140, right: 140, top: 120, bottom: -120, near: 10, far: 700 });
+keyLight.shadow.camera.updateProjectionMatrix();
+keyLight.shadow.bias = -0.0006;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xe3eaff, 0.35); fillLight.position.set(-160, 80, 60); scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.3); rimLight.position.set(40, 60, -180); scene.add(rimLight);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.ShadowMaterial({ opacity: 0.09 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+/* ---------- Builders ---------- */
+const groups = {}, spinners = [], rgbTextures = [], rgbTexturesX = [];
+function roundedRect(w, h, r) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+// Rounded, bevelled slab: footprint w×d, height h, bottom at y = 0
+function slabGeo(w, d, h, r, bevel = 0.2) {
+  const g = new THREE.ExtrudeGeometry(roundedRect(w - 2 * bevel, d - 2 * bevel, Math.max(r - bevel, 0.01)), {
+    depth: Math.max(h - 2 * bevel, 0.001), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 6
+  });
+  g.rotateX(-Math.PI / 2); g.translate(0, bevel, 0);
+  return g;
+}
+function part(id, parent = scene) { const g = new THREE.Group(); groups[id] = g; parent.add(g); return g; }
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6, metalness: 0.05 }, o));
+const basic = (color) => new THREE.MeshBasicMaterial({ color });
+function box(parent, w, h, d, m, x = 0, y = 0, z = 0) {
+  const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  me.position.set(x, y, z); me.castShadow = me.receiveShadow = true; parent.add(me); return me;
+}
+function cyl(parent, rt, rb, h, m, x = 0, y = 0, z = 0, seg = 28) {
+  const me = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m);
+  me.position.set(x, y, z); me.castShadow = me.receiveShadow = true; parent.add(me); return me;
+}
+function canvasTex(w, h, draw) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+}
+function textTex(lines, { w = 512, h = 128, bg = null, fg = "#fff" } = {}) {
+  return canvasTex(w, h, (c) => {
+    if (bg) { c.fillStyle = bg; c.fillRect(0, 0, w, h); }
+    c.fillStyle = fg; c.textAlign = "center"; c.textBaseline = "middle";
+    const step = h / (lines.length + 1);
+    lines.forEach(([txt, size, weight = 700], i) => {
+      c.font = `${weight} ${size}px "Helvetica Neue", Arial, sans-serif`;
+      c.fillText(txt, w / 2, step * (i + 1));
+    });
+  });
+}
+function label(parent, w, h, tex, x, y, z) {
+  const me = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.7 }));
+  me.position.set(x, y, z); parent.add(me); return me;
+}
+// Shared textures for fans
+const caseGlow = canvasTex(256, 8, (c, w, h) => { for (let x = 0; x < w; x++) { c.fillStyle = `hsl(${(x / w) * 360},85%,60%)`; c.fillRect(x, 0, 1, h); } });
+caseGlow.wrapS = THREE.RepeatWrapping; rgbTexturesX.push(caseGlow);
+const hubTex = canvasTex(128, 128, (c, w, h) => {
+  c.fillStyle = "#2a2d33"; c.fillRect(0, 0, w, h);
+  c.strokeStyle = "#6b717b"; c.lineWidth = 5; c.beginPath(); c.arc(w / 2, h / 2, 44, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = "#8a909a"; c.beginPath(); c.arc(w / 2, h / 2, 10, 0, Math.PI * 2); c.fill();
+});
+
+// A fan built in the XY plane, spinning about Z; its intake side faces +Z
+const fanGeoCache = {};
+function fanGeos(size, thick) {
+  const key = size + "|" + thick;
+  if (fanGeoCache[key]) return fanGeoCache[key];
+  const frame = roundedRect(size, size, size * 0.06);
+  const hole = new THREE.Path(); hole.absarc(0, 0, size * 0.465, 0, Math.PI * 2, true); frame.holes.push(hole);
+  const frameG = new THREE.ExtrudeGeometry(frame, { depth: thick, bevelEnabled: false, curveSegments: 32 });
+  frameG.translate(0, 0, -thick / 2);
+  const r0 = size * 0.15, span = size * 0.3, cw = size * 0.2;
+  const bs = new THREE.Shape();
+  bs.moveTo(0, -cw * 0.25);
+  bs.quadraticCurveTo(span * 0.55, -cw * 0.6, span, -cw * 0.05);
+  bs.quadraticCurveTo(span * 0.9, cw * 0.55, span * 0.35, cw * 0.5);
+  bs.quadraticCurveTo(0, cw * 0.35, 0, -cw * 0.25);
+  const bladeG = new THREE.ExtrudeGeometry(bs, { depth: Math.min(0.12, thick * 0.2), bevelEnabled: false, curveSegments: 8 });
+  bladeG.translate(r0 * 0.85, 0, 0);
+  return (fanGeoCache[key] = { frameG, bladeG, r0 });
+}
+function fan(parent, size, thick, frameM, bladeM, speed = 5, { blades = 9, glow = false, frame = true } = {}) {
+  const g = new THREE.Group(); parent.add(g);
+  const G = fanGeos(size, thick);
+  if (frame) {
+    const fr = new THREE.Mesh(G.frameG, frameM); fr.castShadow = fr.receiveShadow = true; g.add(fr);
+    const holeM = mat(0x0b0c0e);
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cyl(g, size * 0.028, size * 0.028, thick * 1.01, holeM, sx * size * 0.41, sy * size * 0.41, 0, 10).rotation.x = Math.PI / 2;
+    for (let i = 0; i < 4; i++) {
+      const arm = new THREE.Group(); arm.rotation.z = Math.PI / 4 + (i * Math.PI) / 2; g.add(arm);
+      box(arm, size * 0.33, size * 0.025, 0.2, frameM, size * 0.3, 0, -thick / 2 + 0.12);
+    }
+  }
+  cyl(g, G.r0 * 0.95, G.r0 * 0.95, thick * 0.5, frameM, 0, 0, -thick * 0.2, 24).rotation.x = Math.PI / 2;
+  const rotor = new THREE.Group(); g.add(rotor);
+  cyl(rotor, G.r0, G.r0, thick * 0.7, bladeM, 0, 0, 0, 32).rotation.x = Math.PI / 2;
+  cyl(rotor, G.r0 * 0.8, G.r0 * 0.8, 0.02, new THREE.MeshStandardMaterial({ map: hubTex, roughness: 0.6 }), 0, 0, thick * 0.36, 32).rotation.x = Math.PI / 2;
+  for (let i = 0; i < blades; i++) {
+    const arm = new THREE.Group(); arm.rotation.z = (i * Math.PI * 2) / blades; rotor.add(arm);
+    const b = new THREE.Mesh(G.bladeG, bladeM); b.rotation.x = 0.55; b.position.z = -0.05; b.castShadow = true; arm.add(b);
+  }
+  if (glow) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(size * 0.468, size * 0.012, 8, 64), new THREE.MeshBasicMaterial({ map: caseGlow }));
+    ring.position.z = thick / 2 + 0.01; g.add(ring);
+  }
+  spinners.push({ rotor, speed });
+  return g;
+}
+function tube(parent, pts, r, m, seg = 48) {
+  const me = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), seg, r, 10, false), m);
+  me.castShadow = true; parent.add(me); return me;
+}
+
+/* ---------- Tower (everything inside shares the rig's coordinates, in cm) ---------- */
+const rig = new THREE.Group(); rig.position.set(64, 0, -14); scene.add(rig);
+const F = -13.8; // front face of the motherboard
+
+// Case: Antec C8, panoramic glass
+const cas = part("case", rig);
+{
+  const shell = mat(0x1c1e23, { roughness: 0.55 });
+  const trim = mat(0x2b2e35, { roughness: 0.5 });
+  const blades = mat(0x30333a, { roughness: 0.5 });
+  const rubber = mat(0x101114, { roughness: 0.95 });
+  const silk = mat(0x0d0e10, { roughness: 0.4 });
+  const glass = mat(0xa9b4c2, { transparent: true, opacity: 0.14, roughness: 0.05, metalness: 0.1, depthWrite: false });
+
+  for (const y of [1, 46]) {
+    const slab = new THREE.Mesh(slabGeo(47, 31, 2, 0.8, 0.3), shell);
+    slab.position.y = y; slab.castShadow = slab.receiveShadow = true; cas.add(slab);
+  }
+  const perf = canvasTex(512, 512, (c, w, h) => {
+    c.fillStyle = "#1c1e23"; c.fillRect(0, 0, w, h); c.fillStyle = "#07080a";
+    for (let y = 8, r = 0; y < h; y += 12, r++) for (let x = r % 2 ? 14 : 8; x < w; x += 12) { c.beginPath(); c.arc(x, y, 3.8, 0, Math.PI * 2); c.fill(); }
+  });
+  const vent = new THREE.Mesh(new THREE.PlaneGeometry(40, 26), new THREE.MeshStandardMaterial({ map: perf, roughness: 0.6 }));
+  vent.rotation.x = -Math.PI / 2; vent.position.set(2, 48.02, 0); cas.add(vent);
+
+  // Front I/O on the top panel: power button, USB-A ×2, USB-C, audio
+  cyl(cas, 0.9, 0.9, 0.1, basic(0xe8f0ff), -21, 48.03, -5, 32);
+  cyl(cas, 0.75, 0.75, 0.32, trim, -21, 48.12, -5, 32);
+  for (const z of [-2.2, -0.4]) box(cas, 0.6, 0.06, 1.4, silk, -21, 48.02, z);
+  box(cas, 0.35, 0.06, 0.9, silk, -21, 48.02, 1.3);
+  cyl(cas, 0.22, 0.22, 0.06, silk, -21, 48.02, 2.6, 12);
+
+  box(cas, 47, 43, 1, shell, 0, 24.5, -15);   // motherboard tray
+  box(cas, 1, 43, 31, shell, 23, 24.5, 0);    // rear wall
+  box(cas, 0.1, 16, 4.6, silk, 22.45, 35.5, -11.8);                                       // rear I/O cutout
+  for (let i = 2; i < 7; i++) box(cas, 0.15, 1.6, 11.5, trim, 22.4, 24 - 1.8 - i * 2.03, -6); // slot covers
+  for (const y of [20, 29, 38]) {                                                          // cable grommets
+    box(cas, 1.6, 5, 0.3, rubber, -7, y, -14.35);
+    box(cas, 0.15, 4.2, 0.05, silk, -7, y, -14.18);
+  }
+
+  const g1 = box(cas, 0.4, 43, 30, glass, -23.3, 24.5, 0.2);
+  const g2 = box(cas, 46, 43, 0.4, glass, -0.3, 24.5, 15.3);
+  for (const g of [g1, g2]) { g.userData.noPick = true; g.castShadow = false; }
+  for (const y of [3.4, 45.6]) {
+    box(cas, 46, 0.8, 0.06, silk, -0.3, y, 15.53);
+    box(cas, 0.06, 0.8, 30, silk, -23.53, y, 0.2);
+  }
+  for (const [x, z] of [[-19, -12], [19, -12], [-19, 12], [19, 12]]) cyl(cas, 1.8, 2.0, 0.9, rubber, x, 0.45, z, 24);
+
+  for (const x of [-14, 0, 14]) { const f = fan(cas, 12, 2.5, trim, blades, 4, { glow: true }); f.rotation.x = Math.PI / 2; f.position.set(x, 44.6, 0); }
+  const rf = fan(cas, 12, 2.5, trim, blades, 4, { glow: true }); rf.rotation.y = -Math.PI / 2; rf.position.set(21.2, 36, 1);
+}
+
+// Motherboard: ROG Crosshair X870E Hero
+const mb = part("mobo", rig);
+{
+  const pcb = mat(0x17191d, { roughness: 0.65 });
+  const heat = mat(0x34383f, { roughness: 0.35, metalness: 0.45 });
+  const heatDark = mat(0x1f2227, { roughness: 0.4, metalness: 0.35 });
+  const steel = mat(0xb9bec6, { roughness: 0.3, metalness: 0.5 });
+  const slotM = mat(0x25282e, { roughness: 0.5 });
+  const latchM = mat(0x4a4e56, { roughness: 0.5 });
+  const plastic = mat(0x111215, { roughness: 0.6 });
+  const chokeM = mat(0x5b6068, { roughness: 0.5, metalness: 0.3 });
+  const gold = mat(0xc9a24a, { roughness: 0.35, metalness: 0.5 });
+
+  box(mb, 24.4, 30.5, 0.2, pcb, 9.2, 29.25, F - 0.1);
+  const silkTex = canvasTex(512, 640, (c, w, h) => {
+    const X = (x) => ((x + 3) / 24.4) * w, Y = (y) => ((44.5 - y) / 30.5) * h;
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    c.strokeStyle = "rgba(150,160,175,.14)"; c.lineWidth = 1.5;
+    for (let i = 0; i < 80; i++) {
+      let x = rnd() * w, y = rnd() * h; c.beginPath(); c.moveTo(x, y);
+      for (let k = 0; k < 3; k++) { const d = 20 + rnd() * 60, s = rnd() < 0.5 ? 1 : -1; x += d * s; if (rnd() < 0.5) y += d; c.lineTo(x, y); }
+      c.stroke();
+    }
+    c.strokeStyle = "rgba(190,198,210,.3)"; c.lineWidth = 3;
+    for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(X(14 + i * 1.1), Y(14.4)); c.lineTo(X(17 + i * 1.1), Y(19.4)); c.stroke(); }
+    c.fillStyle = "rgba(225,230,238,.8)"; c.textBaseline = "middle";
+    c.font = '600 12px "Helvetica Neue", Arial, sans-serif';
+    [["PCIEX16_1", 9.2, 25.3], ["PCIEX16_2", 9.2, 18.3], ["M.2_1", 6.2, 29.7], ["DIMM", 0.7, 42.5], ["EPS_12V", -2.8, 42.2],
+     ["CPU_FAN", 13.9, 44.0], ["Q-CODE", -0.4, 27.1], ["SATA6G", -2.8, 24.3], ["AM5", 8.2, 31.3]].forEach(([t, x, y]) => c.fillText(t, X(x), Y(y)));
+  });
+  label(mb, 24.4, 30.5, silkTex, 9.2, 29.25, F + 0.02);
+  for (const [x, y] of [[-2.2, 40.5], [-2.2, 29.5], [-2.2, 18.8], [20.6, 15], [20.6, 26.5], [9, 43.7]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.1, 8, 20), steel); ring.position.set(x, y, F + 0.04); mb.add(ring);
+  }
+
+  // AM5 socket: body, load plate with window, lever, retention brackets
+  box(mb, 5.6, 5.6, 0.12, plastic, 11, 35, F + 0.06);
+  const lp = roundedRect(5.4, 5.4, 0.2), win = new THREE.Path();
+  win.moveTo(-2.05, -2.05); win.lineTo(-2.05, 2.05); win.lineTo(2.05, 2.05); win.lineTo(2.05, -2.05); win.lineTo(-2.05, -2.05);
+  lp.holes.push(win);
+  const plate = new THREE.Mesh(new THREE.ExtrudeGeometry(lp, { depth: 0.14, bevelEnabled: false }), steel);
+  plate.position.set(11, 35, F + 0.12); plate.castShadow = true; mb.add(plate);
+  cyl(mb, 0.07, 0.07, 6.2, steel, 14.1, 35, F + 0.35, 8);
+  box(mb, 0.9, 0.18, 0.12, steel, 13.7, 38.1, F + 0.35);
+  for (const x of [7.0, 15.0]) box(mb, 0.9, 6.6, 0.9, plastic, x, 35, F + 0.45);
+
+  // Power delivery: chokes and finned VRM heatsink
+  for (let i = 0; i < 9; i++) box(mb, 0.85, 0.85, 0.75, chokeM, 6.0 + i * 1.15, 38.85, F + 0.38);
+  for (let i = 0; i < 8; i++) box(mb, 0.85, 0.85, 0.75, chokeM, 16.55, 30.2 + i * 1.12, F + 0.38);
+  box(mb, 11.4, 2.6, 1.0, heat, 10.8, 40.6, F + 0.5);
+  for (let i = 0; i < 12; i++) box(mb, 0.45, 2.6, 1.4, heat, 5.5 + i * 0.96, 40.6, F + 1.7);
+
+  // Rear I/O shroud with RGB line and badge
+  const shroud = new THREE.Mesh(slabGeo(3.6, 3.8, 17, 0.6, 0.25), heatDark);
+  shroud.position.set(19.4, 27, F + 1.9); shroud.castShadow = true; mb.add(shroud);
+  box(mb, 0.35, 9, 0.08, new THREE.MeshBasicMaterial({ map: caseGlow }), 18.4, 37, F + 3.84).castShadow = false;
+  label(mb, 3.2, 1.1, textTex([["HERO", 80]], { w: 256, h: 96, fg: "#d7dce4" }), 19.9, 30.2, F + 3.83).rotation.z = Math.PI / 2;
+  for (let i = 0; i < 5; i++) box(mb, 0.06, 2.2, 0.05, plastic, 20.4, 42.4 - i * 0.7, F + 3.84).rotation.z = 0.6;
+
+  // Memory slots with latches
+  [1.0, 2.2, 3.4, 4.6].forEach((x, i) => {
+    box(mb, 0.7, 13.6, 0.8, i % 2 ? slotM : plastic, x, 35, F + 0.4);
+    box(mb, 0.72, 0.7, 1.1, latchM, x, 42.05, F + 0.55);
+  });
+
+  // Power connectors
+  box(mb, 1.3, 5.2, 1.6, plastic, -1.7, 35, F + 0.8);   // ATX 24-pin
+  box(mb, 2.4, 1.2, 1.3, plastic, -1.3, 43.5, F + 0.65); // EPS 8-pin
+
+  // PCIe slots with steel armour and latches
+  for (const y of [24, 17]) {
+    box(mb, 8.9, 0.75, 1.1, plastic, 13.5, y, F + 0.55);
+    box(mb, 9.1, 0.9, 0.12, steel, 13.5, y, F + 1.12);
+    box(mb, 9.1, 0.08, 1.1, steel, 13.5, y + 0.45, F + 0.55);
+    box(mb, 9.1, 0.08, 1.1, steel, 13.5, y - 0.45, F + 0.55);
+    box(mb, 0.8, 1.0, 1.3, latchM, 8.7, y, F + 0.65);
+  }
+  box(mb, 0.6, 2.2, 0.5, slotM, 5.7, 28, F + 0.25); // M.2_1 socket
+
+  // Chipset cover
+  const cover = new THREE.Mesh(slabGeo(8, 4.6, 1.0, 0.6, 0.15), heatDark);
+  cover.rotation.x = Math.PI / 2; cover.position.set(4.5, 16.9, F); cover.castShadow = true; mb.add(cover);
+  label(mb, 6.4, 2.0, textTex([["CROSSHAIR", 46], ["X870E HERO", 40, 500]], { w: 512, h: 156, fg: "#c9ced6" }), 4.0, 16.9, F + 1.02);
+  for (let i = 0; i < 3; i++) box(mb, 0.07, 3.6, 0.03, steel, 7.4 + i * 0.28, 16.9, F + 1.02).rotation.z = 0.45;
+
+  // Q-Code display, onboard buttons, SATA, audio capacitors, headers
+  box(mb, 1.6, 0.9, 0.3, plastic, 0.4, 26.2, F + 0.15);
+  label(mb, 1.3, 0.8, textTex([["A0", 84]], { w: 150, h: 120, fg: "#ff3b3b" }), 0.4, 26.2, F + 0.31);
+  cyl(mb, 0.3, 0.3, 0.25, mat(0xd0213a), -1.9, 26.2, F + 0.12, 16).rotation.x = Math.PI / 2;
+  cyl(mb, 0.3, 0.3, 0.25, plastic, -1.9, 27.2, F + 0.12, 16).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 4; i++) box(mb, 0.9, 0.7, 1.0, plastic, -2.45, 20.3 + i * 0.95, F + 0.5);
+  for (let i = 0; i < 6; i++) cyl(mb, 0.28, 0.28, 0.9, gold, -2.2 + (i % 2) * 0.9, 15.2 + Math.floor(i / 2) * 1.2, F + 0.45, 16).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 5; i++) box(mb, 1.2, 0.5, 0.8, plastic, 10.5 + i * 2.1, 14.55, F + 0.4);
+  box(mb, 1.1, 0.5, 0.8, mat(0xe9ecf0), 13.2, 43.9, F + 0.4); // CPU_FAN header
+}
+
+// CPU: Ryzen 5 7600X with the AM5 notched heat spreader
+const cpu = part("cpu", rig);
+{
+  const sub = new THREE.Mesh(slabGeo(4, 4, 0.22, 0.12, 0.05), mat(0x1f5b35, { roughness: 0.5 }));
+  sub.rotation.x = Math.PI / 2; sub.position.set(11, 35, F + 0.26); sub.castShadow = true; cpu.add(sub);
+  const a = 1.65, n = 0.38, s = new THREE.Shape();
+  s.moveTo(-a, -a); s.lineTo(a, -a); s.lineTo(a, -1.0); s.lineTo(a - n, -0.7); s.lineTo(a - n, 0.7); s.lineTo(a, 1.0); s.lineTo(a, a);
+  s.lineTo(-a, a); s.lineTo(-a, 1.0); s.lineTo(-a + n, 0.7); s.lineTo(-a + n, -0.7); s.lineTo(-a, -1.0); s.lineTo(-a, -a);
+  const ihs = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.4, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 2 }), mat(0xc9cdd3, { roughness: 0.28, metalness: 0.5 }));
+  ihs.position.set(11, 35, F + 0.5); ihs.castShadow = true; cpu.add(ihs);
+  const gold = mat(0xd4a94c, { roughness: 0.3, metalness: 0.6 });
+  for (const sx of [-1, 1]) for (const y of [-0.35, 0, 0.35]) box(cpu, 0.12, 0.2, 0.08, gold, 11 + sx * (a - n / 2), 35 + y, F + 0.52);
+  label(cpu, 2.9, 2.9, textTex([["AMD", 44], ["RYZEN 5", 40], ["7600X", 34, 500]], { w: 256, h: 256, fg: "#3b3f46" }), 11, 35, F + 0.955);
+  const tri = new THREE.Shape(); tri.moveTo(0, 0); tri.lineTo(0.5, 0); tri.lineTo(0, 0.5); tri.lineTo(0, 0);
+  const marker = new THREE.Mesh(new THREE.ShapeGeometry(tri), gold); marker.position.set(9.15, 33.15, F + 0.49); cpu.add(marker);
+}
+
+// CPU cooler: ID-Cooling SE-214-XT V2 Black
+const cool = part("cooler", rig);
+{
+  const black = mat(0x16181b, { roughness: 0.45, metalness: 0.25 });
+  const finM = mat(0x202226, { roughness: 0.38, metalness: 0.35 });
+  const pipeM = mat(0x3a3e45, { roughness: 0.28, metalness: 0.6 });
+  const steel = mat(0x9aa0a8, { roughness: 0.35, metalness: 0.5 });
+  const zb = F + 0.94; // top of the CPU
+
+  box(cool, 4.6, 4.6, 0.9, black, 11, 35, zb + 0.45);
+  box(cool, 3.6, 4.0, 0.5, black, 11, 35, zb + 1.15);
+  for (const dy of [-1.6, 1.6]) box(cool, 9.4, 0.7, 0.25, steel, 11, 35 + dy, zb + 1.1);
+  for (const x of [7.0, 15.0]) for (const dy of [-1.6, 1.6]) cyl(cool, 0.28, 0.28, 0.4, steel, x, 35 + dy, zb + 1.3, 12).rotation.x = Math.PI / 2;
+  cyl(cool, 0.45, 0.45, 0.4, steel, 11, 35, zb + 1.5, 16).rotation.x = Math.PI / 2;
+
+  // Four U-shaped heatpipes rising through the stack
+  const zTop = 3.8, legs = [0.7, 2.0, 3.3, 4.6];
+  legs.forEach((a, i) => {
+    const x = 11 + (i % 2 ? 0.75 : -0.75);
+    tube(cool, [[x, 35 - a, zTop], [x, 35 - a, zb + 3.2], [x, 35 - a * 0.6, zb + 1.0], [x, 35 + a * 0.6, zb + 1.0], [x, 35 + a, zb + 3.2], [x, 35 + a, zTop]], 0.3, pipeM, 64);
+    for (const sgn of [-1, 1]) { const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), pipeM); cap.position.set(x, 35 + sgn * a, zTop); cool.add(cap); }
+  });
+
+  // Fins with a saw-tooth intake edge and holes for the pipes
+  const fs = new THREE.Shape(), fw = 2.5, fh = 6;
+  fs.moveTo(-fw, -fh);
+  for (let k = 1; k <= 8; k++) fs.lineTo(-fw + (k % 2 ? 0.25 : 0), -fh + (k * 12) / 8);
+  fs.lineTo(fw, fh); fs.lineTo(fw, -fh); fs.lineTo(-fw, -fh);
+  legs.forEach((a, i) => { for (const sgn of [-1, 1]) { const h = new THREE.Path(); h.absarc(i % 2 ? 0.75 : -0.75, sgn * a, 0.32, 0, Math.PI * 2, false); fs.holes.push(h); } });
+  const finG = new THREE.ExtrudeGeometry(fs, { depth: 0.12, bevelEnabled: false, curveSegments: 10 });
+  for (let i = 0; i < 33; i++) {
+    const f = new THREE.Mesh(finG, i === 32 ? black : finM);
+    f.position.set(11, 35, F + 4.4 + i * 0.4); if (i === 32) f.scale.z = 2;
+    f.castShadow = f.receiveShadow = true; cool.add(f);
+  }
+  label(cool, 6.5, 1.0, textTex([["ID-COOLING", 90]], { w: 640, h: 100, fg: "#cfd4db" }), 12.85, 35, F + 17.25).rotation.z = Math.PI / 2;
+
+  // 120 mm fan with wire clips and its cable to CPU_FAN
+  const f = fan(cool, 12, 2.5, black, mat(0x2a2d33), 6); f.rotation.y = -Math.PI / 2; f.position.set(7.2, 35, -3.2);
+  for (const y of [28.9, 41.1]) for (const z of [-8.6, 2.2]) box(cool, 3.2, 0.1, 0.1, steel, 9.2, y, z);
+  tube(cool, [[6.4, 40.5, -6], [7.5, 43, -9], [11, 44.2, -12], [13.2, 43.9, F + 0.8]], 0.1, mat(0x111214), 30);
+}
+
+// RAM: Corsair Vengeance RGB RS, 2 × 16 GB in A2 / B2
+const ram = part("ram", rig);
+{
+  const spreader = mat(0x1b1d21, { roughness: 0.35, metalness: 0.35 });
+  const edge = mat(0x2d3036, { roughness: 0.4, metalness: 0.3 });
+  const pcbM = mat(0x121315, { roughness: 0.6 });
+  const diffuser = new THREE.MeshStandardMaterial({ color: 0xf4f6fa, transparent: true, opacity: 0.55, roughness: 0.3 });
+  const tex = canvasTex(8, 256, (c, w, h) => { for (let y = 0; y < h; y++) { c.fillStyle = `hsl(${(y / h) * 360},90%,60%)`; c.fillRect(0, y, w, 1); } });
+  tex.wrapT = THREE.RepeatWrapping; rgbTextures.push(tex);
+  const rgb = new THREE.MeshBasicMaterial({ map: tex });
+
+  const prof = new THREE.Shape();
+  prof.moveTo(-6.65, 0); prof.lineTo(6.65, 0); prof.lineTo(6.65, 2.9); prof.lineTo(6.1, 3.4); prof.lineTo(-6.1, 3.4); prof.lineTo(-6.65, 2.9); prof.lineTo(-6.65, 0);
+  const plateG = new THREE.ExtrudeGeometry(prof, { depth: 0.28, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 1 });
+  plateG.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1)); // length → y, height → z, thickness → x
+  const brand = textTex([["CORSAIR", 60], ["VENGEANCE RGB RS", 40, 500]], { w: 768, h: 150, fg: "#c3c8d0" });
+
+  for (const x of [2.2, 4.6]) {
+    box(ram, 0.12, 13.3, 0.7, pcbM, x, 35, F + 1.15);
+    for (const px of [x - 0.34, x + 0.06]) {
+      const p = new THREE.Mesh(plateG, spreader); p.position.set(px, 35, F + 1.2); p.castShadow = p.receiveShadow = true; ram.add(p);
+    }
+    box(ram, 0.04, 11, 0.08, edge, x - 0.37, 35, F + 3.9);
+    const lbl = label(ram, 10, 1.9, brand, x - 0.38, 35, F + 2.6); lbl.rotation.set(0, -Math.PI / 2, Math.PI / 2);
+    box(ram, 0.5, 12.2, 0.35, rgb, x, 35, F + 4.45).castShadow = false;
+    box(ram, 0.56, 12.4, 0.2, diffuser, x, 35, F + 4.7).castShadow = false;
+  }
+}
+
+// SSD: Ediloca 512 GB NVMe, M.2 2280
+const ssd = part("ssd", rig);
+{
+  const pcbM = mat(0x141517, { roughness: 0.55 });
+  const chip = mat(0x1d1f23, { roughness: 0.4 });
+  const steel = mat(0xb9bec6, { roughness: 0.35, metalness: 0.5 });
+  box(ssd, 8, 2.2, 0.08, pcbM, 10, 28, F + 0.35);
+  const fingers = canvasTex(16, 128, (c, w, h) => { c.fillStyle = "#141517"; c.fillRect(0, 0, w, h); c.fillStyle = "#d9ae50"; for (let y = 2; y < h; y += 5) if (y < 70 || y > 80) c.fillRect(0, y, w, 3); });
+  label(ssd, 0.3, 2.1, fingers, 6.15, 28, F + 0.395);
+  box(ssd, 1.2, 1.2, 0.12, chip, 7.2, 28, F + 0.45);
+  box(ssd, 2.8, 1.7, 0.14, chip, 10.3, 28, F + 0.46);
+  box(ssd, 0.4, 0.4, 0.08, chip, 13.0, 28.6, F + 0.43);
+  label(ssd, 5.2, 1.9, textTex([["EDILOCA", 44], ["512GB NVMe · PCIe Gen3×4", 24, 500]], { w: 512, h: 180, bg: "#e7eaee", fg: "#1c1e22" }), 10.1, 28, F + 0.545);
+  cyl(ssd, 0.42, 0.42, 0.18, steel, 14.1, 28, F + 0.48, 20).rotation.x = Math.PI / 2;
+  box(ssd, 0.5, 0.08, 0.04, pcbM, 14.1, 28, F + 0.58);
+  box(ssd, 0.08, 0.5, 0.04, pcbM, 14.1, 28, F + 0.58);
+}
+
+// GPU: RTX 5080 Founders Edition, double flow-through
+const gpu = part("gpu", rig);
+{
+  const core = mat(0x1a1b1f, { roughness: 0.45, metalness: 0.2 });
+  const alu = mat(0x9fa5ad, { roughness: 0.3, metalness: 0.6 });
+  const finM = mat(0x2b2e34, { roughness: 0.4, metalness: 0.4 });
+  const void_ = mat(0x0c0d0f, { roughness: 0.8 });
+  const gx = 6.8, gy = 21.6, gz = F + 1.3 + 6.85;
+
+  const body = new THREE.Mesh(slabGeo(30.4, 13.7, 3.6, 0.9, 0.35), core);
+  body.position.set(gx, gy - 1.8, gz); body.castShadow = body.receiveShadow = true; gpu.add(body);
+  for (const sx of [-1, 1]) {
+    const cap = new THREE.Mesh(slabGeo(2.4, 13.9, 3.8, 0.6, 0.3), alu);
+    cap.position.set(gx + sx * 14.0, gy - 1.9, gz); cap.castShadow = true; gpu.add(cap);
+  }
+  box(gpu, 8.6, 0.12, 1.2, mat(0x1b3a28), 13.5, 23.5, F + 0.9); // PCB tab into PCIEX16_1
+
+  // Flow-through: exposed fin stacks on top, fans in round shrouds underneath
+  const slatG = new THREE.BoxGeometry(0.08, 0.3, 9.6);
+  for (const dx of [-7.5, 7.5]) {
+    box(gpu, 9.4, 0.05, 9.8, void_, gx + dx, gy + 1.81, gz).castShadow = false;
+    for (let i = 0; i < 36; i++) { const m = new THREE.Mesh(slatG, finM); m.position.set(gx + dx - 4.4 + i * 0.25, gy + 1.72, gz); gpu.add(m); }
+    cyl(gpu, 4.9, 4.9, 0.05, void_, gx + dx, gy - 1.83, gz, 40);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.95, 0.18, 8, 48), alu);
+    ring.rotation.x = Math.PI / 2; ring.position.set(gx + dx, gy - 1.9, gz); gpu.add(ring);
+    const f = fan(gpu, 9.6, 1, core, mat(0x26282d), 5, { blades: 11, frame: false });
+    f.rotation.x = Math.PI / 2; f.position.set(gx + dx, gy - 2.1, gz);
+  }
+
+  // Top edge facing the glass: lit wordmark, trim, recessed 12V-2×6 socket
+  box(gpu, 24, 1.4, 0.1, void_, gx - 1, gy, gz + 6.86);
+  const word = new THREE.Mesh(new THREE.PlaneGeometry(11, 1.6), new THREE.MeshBasicMaterial({ map: textTex([["GEFORCE RTX", 64]], { w: 768, h: 110, fg: "#f4f6fa" }), transparent: true }));
+  word.position.set(gx - 5, gy, gz + 6.93); gpu.add(word);
+  for (const dy of [-1.55, 1.55]) box(gpu, 26, 0.2, 0.12, alu, gx, gy + dy, gz + 6.88);
+  box(gpu, 1.9, 0.9, 0.5, void_, gx + 4.5, gy, gz + 6.7);
+  box(gpu, 0.2, 4.2, 12, alu, 22.2, gy, gz - 0.6); // I/O bracket
+}
+
+// PSU: Rosewill VMG 750W 80+ Gold, with its modular cables
+const psu = part("psu", rig);
+{
+  const body = mat(0x1c1e22, { roughness: 0.6, metalness: 0.15 });
+  const dark = mat(0x0c0d0f, { roughness: 0.7 });
+  const grille = mat(0x3a3d43, { roughness: 0.4, metalness: 0.4 });
+  const sleeve = mat(0x121316, { roughness: 0.85 });
+
+  const shell = new THREE.Mesh(slabGeo(15, 14, 8.6, 0.5, 0.2), body);
+  shell.position.set(13.5, 3, -6.5); shell.castShadow = shell.receiveShadow = true; psu.add(shell);
+
+  // 120 mm FDB fan under a wire grille
+  cyl(psu, 6.2, 6.2, 0.05, dark, 13.5, 11.62, -6.5, 40);
+  const f = fan(psu, 12, 0.6, body, mat(0x26292e), 5, { blades: 7, frame: false });
+  f.rotation.x = -Math.PI / 2; f.position.set(13.5, 11.95, -6.5);
+  for (const r of [1.6, 3.0, 4.4, 5.8]) { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.07, 6, 64), grille); t.rotation.x = Math.PI / 2; t.position.set(13.5, 12.35, -6.5); psu.add(t); }
+  for (let i = 0; i < 4; i++) box(psu, 11.8, 0.1, 0.1, grille, 13.5, 12.35, -6.5).rotation.y = (i * Math.PI) / 4;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(6.0, 0.25, 8, 64), body); rim.rotation.x = Math.PI / 2; rim.position.set(13.5, 12.1, -6.5); psu.add(rim);
+
+  // Side decal facing the glass
+  const side = canvasTex(768, 440, (c, w, h) => {
+    c.fillStyle = "#1c1e22"; c.fillRect(0, 0, w, h);
+    c.strokeStyle = "#3a3d44"; c.lineWidth = 4; c.strokeRect(14, 14, w - 28, h - 28);
+    c.fillStyle = "#eef1f5";
+    c.font = '700 84px "Helvetica Neue", Arial, sans-serif'; c.fillText("ROSEWILL", 50, 150);
+    c.font = '600 64px "Helvetica Neue", Arial, sans-serif'; c.fillText("VMG 750W", 50, 240);
+    c.fillStyle = "#9aa1ab"; c.font = '500 30px "Helvetica Neue", Arial, sans-serif'; c.fillText("750W · 80 PLUS GOLD · 120mm FDB FAN", 50, 350);
+    const g = c.createRadialGradient(620, 180, 10, 620, 180, 110); g.addColorStop(0, "#f3d27a"); g.addColorStop(1, "#b8862b");
+    c.fillStyle = g; c.beginPath(); c.arc(620, 180, 100, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#2a1f08"; c.textAlign = "center";
+    c.font = '800 48px "Helvetica Neue", Arial, sans-serif'; c.fillText("80", 620, 170);
+    c.font = '700 24px "Helvetica Neue", Arial, sans-serif'; c.fillText("PLUS", 620, 204); c.fillText("GOLD", 620, 234);
+  });
+  label(psu, 13, 7.45, side, 13.5, 7.3, 0.52);
+
+  // Modular panel facing the front of the case
+  const modTex = canvasTex(520, 320, (c, w, h) => {
+    c.fillStyle = "#16181b"; c.fillRect(0, 0, w, h);
+    c.font = '600 20px "Helvetica Neue", Arial, sans-serif';
+    const sock = (x, y, cols, rows, name) => {
+      const p = 16; c.fillStyle = "#050506"; c.fillRect(x, y, cols * p + 8, rows * p + 8);
+      c.fillStyle = "#3b3f46"; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) c.fillRect(x + 6 + i * p, y + 6 + j * p, 10, 10);
+      c.fillStyle = "#9aa1ab"; c.fillText(name, x, y + rows * p + 32);
+    };
+    sock(24, 40, 12, 2, "ATX 24P"); sock(270, 40, 8, 2, "12V-2×6");
+    sock(24, 170, 4, 2, "CPU"); sock(130, 170, 4, 2, "CPU"); sock(270, 170, 4, 2, "PCIe"); sock(380, 170, 6, 1, "SATA");
+  });
+  label(psu, 13, 7.6, modTex, 5.97, 7.3, -6.5).rotation.y = -Math.PI / 2;
+  const hex = canvasTex(256, 160, (c, w, h) => {
+    c.fillStyle = "#1c1e22"; c.fillRect(0, 0, w, h); c.fillStyle = "#050506";
+    for (let y = 10, r = 0; y < h; y += 11, r++) for (let x = r % 2 ? 12 : 5; x < w; x += 13) { c.beginPath(); for (let k = 0; k < 6; k++) { const a = (k * Math.PI) / 3; c.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); } c.fill(); }
+  });
+  label(psu, 13, 7.6, hex, 21.03, 7.3, -6.5).rotation.y = Math.PI / 2;
+
+  // Cables: 24-pin ATX, 8-pin EPS, 12V-2×6 to the GPU
+  box(psu, 0.8, 2.2, 3.0, dark, 5.6, 8.4, -9);
+  box(psu, 0.8, 1.2, 1.8, dark, 5.6, 6.2, -11.6);
+  box(psu, 0.8, 1.2, 1.6, dark, 5.6, 9.8, -4.5);
+  tube(psu, [[5.2, 8.4, -9], [1, 12.5, -11.5], [-10.5, 14, -12], [-10.5, 30, -12], [-7, 35, -12.6], [-3.4, 35, -13]], 0.75, sleeve, 80);
+  box(psu, 0.95, 5.2, 1.4, dark, -2.85, 35, F + 0.8);
+  tube(psu, [[5.2, 6.2, -11.6], [-4, 7.5, -13.2], [-13, 11, -13.4], [-13, 42, -13.4], [-6, 45.6, -13.2], [-1.3, 45.4, -13.1]], 0.38, sleeve, 80);
+  box(psu, 2.4, 1.2, 1.3, dark, -1.3, 44.7, F + 0.65);
+  const plugZ = F + 1.3 + 6.85 + 6.9;
+  box(psu, 1.9, 0.9, 0.9, dark, 11.3, 21.6, plugZ + 0.35);
+  tube(psu, [[11.3, 21.6, plugZ + 0.8], [11.3, 21.2, plugZ + 2.2], [10, 16, plugZ + 3], [6.5, 12.8, 2.5], [4.8, 10.2, -2.5], [5.2, 9.8, -4.5]], 0.45, sleeve, 60);
+}
+
+/* ---------- Desk ---------- */
+// Monitor: Samsung Odyssey G5 32", 1000R curved panel on a V-stand
+const mon = part("monitor"); mon.position.set(-12, 0, -34);
+{
+  const shellM = mat(0x16171a, { roughness: 0.4, metalness: 0.1 });
+  const backM = mat(0x1c1d21, { roughness: 0.28, metalness: 0.1 });
+  const standM = mat(0x232428, { roughness: 0.35, metalness: 0.3 });
+  const darkM = mat(0x08090a, { roughness: 0.8 });
+  const R = 100, W = 70.8, H = 39.8, T = 1.1, SIDE = 0.7, CHIN = 1.5, y0 = 13;
+  const OW = W + SIDE * 2, OH = H + SIDE + CHIN, Lo = OW / R;
+
+  // Solid curved panel: an arc band extruded upward (arc axis sits R cm in front of the screen)
+  const band = new THREE.Shape();
+  band.absarc(0, -R, R, Math.PI / 2 + Lo / 2, Math.PI / 2 - Lo / 2, true);
+  band.absarc(0, -R, R + T, Math.PI / 2 - Lo / 2, Math.PI / 2 + Lo / 2, false);
+  const panelG = new THREE.ExtrudeGeometry(band, { depth: OH, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 2, curveSegments: 72 });
+  panelG.rotateX(-Math.PI / 2);
+  const panel = new THREE.Mesh(panelG, shellM); panel.position.y = y0; panel.castShadow = panel.receiveShadow = true; mon.add(panel);
+
+  // Screen image: a match in progress
+  const screenTex = canvasTex(1536, 864, (c, w, h) => {
+    const hz = h * 0.58;
+    const sky = c.createLinearGradient(0, 0, 0, hz);
+    sky.addColorStop(0, "#0b1230"); sky.addColorStop(0.5, "#27408f"); sky.addColorStop(0.85, "#e8738a"); sky.addColorStop(1, "#ffb36b");
+    c.fillStyle = sky; c.fillRect(0, 0, w, hz);
+    let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    c.fillStyle = "rgba(255,255,255,.7)"; for (let i = 0; i < 140; i++) c.fillRect(rnd() * w, rnd() * hz * 0.45, 2, 2);
+    const sx = w / 2, sy = hz - 10, sr = 190;
+    const sun = c.createLinearGradient(0, sy - sr, 0, sy); sun.addColorStop(0, "#ffe27a"); sun.addColorStop(1, "#ff5f8f");
+    c.save(); c.beginPath(); c.arc(sx, sy, sr, Math.PI, 0); c.clip();
+    c.fillStyle = sun; c.fillRect(sx - sr, sy - sr, sr * 2, sr);
+    c.fillStyle = sky; for (let i = 0; i < 6; i++) c.fillRect(sx - sr, sy - 90 + i * 16, sr * 2, 3 + i * 1.6);
+    c.restore();
+    const ridge = (amp, color, seed) => {
+      c.fillStyle = color; c.beginPath(); c.moveTo(0, hz);
+      for (let x = 0; x <= w; x += 12) c.lineTo(x, hz - Math.abs(Math.sin(x * 0.004 + seed) + 0.6 * Math.sin(x * 0.013 + seed * 2)) * amp);
+      c.lineTo(w, hz); c.fill();
+    };
+    ridge(95, "#3b2f6e", 1); ridge(55, "#1b1a45", 4);
+    const floor = c.createLinearGradient(0, hz, 0, h); floor.addColorStop(0, "#150f2e"); floor.addColorStop(1, "#05060d");
+    c.fillStyle = floor; c.fillRect(0, hz, w, h - hz);
+    c.strokeStyle = "rgba(255,95,180,.5)"; c.lineWidth = 2;
+    for (let i = -16; i <= 16; i++) { c.beginPath(); c.moveTo(sx + i * 18, hz); c.lineTo(sx + i * 170, h); c.stroke(); }
+    for (let i = 1; i < 10; i++) { const y = hz + Math.pow(i / 10, 2.2) * (h - hz); c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    // Weapon silhouette
+    c.fillStyle = "#0a0c16"; c.beginPath();
+    c.moveTo(w * 0.6, h); c.lineTo(w * 0.69, h * 0.8); c.lineTo(w * 0.86, h * 0.71); c.lineTo(w * 0.91, h * 0.745); c.lineTo(w * 0.8, h * 0.86); c.lineTo(w * 0.79, h); c.fill();
+    c.strokeStyle = "rgba(160,180,255,.35)"; c.lineWidth = 3; c.beginPath(); c.moveTo(w * 0.7, h * 0.805); c.lineTo(w * 0.86, h * 0.72); c.stroke();
+    // HUD
+    c.strokeStyle = "#fff"; c.lineWidth = 3;
+    [[-26, 0, -9, 0], [9, 0, 26, 0], [0, -26, 0, -9], [0, 9, 0, 26]].forEach(([a, b, d, e]) => { c.beginPath(); c.moveTo(w / 2 + a, h / 2 + b); c.lineTo(w / 2 + d, h / 2 + e); c.stroke(); });
+    c.fillStyle = "rgba(8,12,28,.6)"; c.beginPath(); c.arc(120, 120, 88, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.5)"; c.lineWidth = 2; c.stroke();
+    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(120, 104); c.lineTo(130, 130); c.lineTo(110, 130); c.fill();
+    c.fillStyle = "#ff4d6d"; for (const [x, y] of [[80, 90], [160, 150], [150, 70]]) { c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fill(); }
+    c.font = '700 36px Menlo, "Courier New", monospace'; c.textAlign = "right"; c.fillStyle = "#4ade80"; c.fillText("240 FPS", w - 44, 64);
+    c.fillStyle = "rgba(0,0,0,.35)"; for (let i = 0; i < 3; i++) c.fillRect(w - 440, 96 + i * 46, 396, 36);
+    c.textAlign = "left"; c.fillStyle = "rgba(255,255,255,.9)"; c.fillRect(48, h - 86, 300, 18);
+    c.fillStyle = "#4ade80"; c.fillRect(51, h - 83, 250, 12);
+    c.fillStyle = "#fff"; c.font = '700 44px "Helvetica Neue", Arial, sans-serif'; c.fillText("100", 48, h - 104);
+    c.textAlign = "right"; c.font = '700 56px "Helvetica Neue", Arial, sans-serif'; c.fillText("30", w - 150, h - 60);
+    c.font = '500 32px "Helvetica Neue", Arial, sans-serif'; c.fillStyle = "rgba(255,255,255,.7)"; c.fillText("/ 90", w - 60, h - 60);
+  });
+  screenTex.anisotropy = 8;
+  screenTex.repeat.x = -1; screenTex.offset.x = 1; // cylinder UVs run right-to-left from the front
+  const screen = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.14, R - 0.14, H, 72, 1, true, Math.PI - W / R / 2, W / R), new THREE.MeshBasicMaterial({ map: screenTex, side: THREE.DoubleSide }));
+  screen.position.set(0, y0 + CHIN + H / 2, R); mon.add(screen);
+
+  // Chin: wordmark and power LED
+  label(mon, 7, 0.8, textTex([["SAMSUNG", 70]], { w: 512, h: 80, fg: "#aeb3bb" }), 0, y0 + CHIN / 2, 0.22);
+  box(mon, 0.35, 0.12, 0.06, basic(0x5fa8ff), 15, y0 + 0.5, R - R * Math.cos(15 / R) + 0.22).castShadow = false;
+
+  // Rear housing with vents and a port strip underneath
+  const housing = new THREE.Mesh(slabGeo(40, 24, 4.2, 5, 1.4), backM);
+  housing.rotation.x = -Math.PI / 2; housing.position.set(0, 33, -0.8); housing.castShadow = true; mon.add(housing);
+  const vents = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = "#1c1d21"; c.fillRect(0, 0, w, h); c.fillStyle = "#060607";
+    for (let x = 12; x < w - 8; x += 14) c.fillRect(x, 16, 6, h - 32);
+  });
+  label(mon, 30, 7.5, vents, 0, 40.5, -5.03).rotation.y = Math.PI;
+  box(mon, 14, 0.05, 2.2, darkM, 0, 20.97, -3);
+  for (let i = 0; i < 5; i++) box(mon, 1.4, 0.06, 0.6, mat(0x3a3d44), -5 + i * 2.5, 20.93, -3);
+  cyl(mon, 1.3, 1.3, 11, standM, 0, 30, -6.3, 24).rotation.z = Math.PI / 2; // tilt hinge
+
+  // Stand: neck with a cable-routing hole, V base
+  const neck = new THREE.Mesh(slabGeo(6.4, 2.6, 28, 1.2, 0.5), standM);
+  neck.position.set(0, 1.2, -7); neck.castShadow = neck.receiveShadow = true; mon.add(neck);
+  const hole = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.22, 10, 32), mat(0x3a3d44, { roughness: 0.3, metalness: 0.5 }));
+  hole.position.set(0, 10, -5.68); mon.add(hole);
+  cyl(mon, 1.3, 1.3, 0.1, darkM, 0, 10, -5.66, 28).rotation.x = Math.PI / 2;
+  const hub = new THREE.Mesh(slabGeo(10, 7, 1.3, 2.8, 0.45), standM); hub.position.set(0, 0, -7); hub.castShadow = hub.receiveShadow = true; mon.add(hub);
+  box(mon, 6, 0.04, 0.3, mat(0x9aa0a8, { roughness: 0.25, metalness: 0.6 }), 0, 1.32, -4.2);
+  for (const a of [-0.62, 0.62]) {
+    const arm = new THREE.Mesh(slabGeo(3.6, 22, 1.0, 1.8, 0.35), standM);
+    arm.position.set(10.5 * Math.sin(a), 0, -7 + 10.5 * Math.cos(a)); arm.rotation.y = a;
+    arm.castShadow = arm.receiveShadow = true; mon.add(arm);
+  }
+
+  // DisplayPort cable down through the neck toward the tower
+  tube(mon, [[3, 21, -3.2], [1.5, 15, -4.6], [0, 10, -5.4], [0, 9.6, -9.5], [0, 1.5, -12], [12, 0.3, -17], [24, 0.3, -19]], 0.28, darkM, 90);
+}
+
+// Desk mat under the keyboard and mouse (scenery, not a clickable part)
+const MAT_Y = 0.3;
+{
+  const deskMat = new THREE.Mesh(slabGeo(96, 34, MAT_Y, 1.6, 0.1), mat(0x2b2e35, { roughness: 0.95 }));
+  deskMat.position.set(8, 0, 25); deskMat.receiveShadow = true; scene.add(deskMat);
+}
+
+// Keyboard: AULA S99, 98% layout with OEM-profile rows, legends, RGB and a volume knob
+const kb = part("keyboard"); kb.position.set(-12, MAT_Y, 24);
+{
+  const body = mat(0xeceef2, { roughness: 0.5 });
+  const cap = mat(0xf9fafb, { roughness: 0.55 });
+  const mod = mat(0xb9c0ca, { roughness: 0.55 });
+  const accent = mat(0x1a56ff, { roughness: 0.5 });
+  const dark = mat(0x16181c, { roughness: 0.6 });
+  const U = 1.9, x0 = -9 * U, plateTop = 2.5;
+  const deck = new THREE.Group(); deck.rotation.x = 0.05; deck.position.y = 0.38; kb.add(deck);
+
+  const shell = new THREE.Mesh(slabGeo(38.6, 14.6, 2.4, 1.1, 0.35), body);
+  shell.castShadow = shell.receiveShadow = true; deck.add(shell);
+  const glowTex = canvasTex(256, 8, (c, w, h) => { for (let x = 0; x < w; x++) { c.fillStyle = `hsl(${(x / w) * 360},80%,62%)`; c.fillRect(x, 0, 1, h); } });
+  glowTex.wrapS = THREE.RepeatWrapping; rgbTexturesX.push(glowTex);
+  box(deck, 33.8, 0.12, 11.2, new THREE.MeshBasicMaterial({ map: glowTex, color: 0x707070 }), 0, 2.36, 0).castShadow = false;
+
+  const rows = [
+    [1, -0.35, 1, 1, 1, 1, -0.25, 1, 1, 1, 1, -0.25, 1, 1, 1, 1, -0.25, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5, 1, 1, 1],
+    [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25, 1, 1, 1],
+    [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.75, 1, 1, 1, 1],
+    [1, 1, 1, 6, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ];
+  const LEG = [
+    ["Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Del", "Home"],
+    ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Back", "Num", "/", "*"],
+    ["Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\", "7", "8", "9"],
+    ["Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter", "4", "5", "6"],
+    ["Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift", "↑", "1", "2", "3"],
+    ["Ctrl", "Win", "Alt", "", "Alt", "Fn", "Ctrl", "←", "↓", "→", "0", ".", "↵"]
+  ];
+
+  // One texture atlas holds every legend; each legend plane points its UVs at a cell
+  const uniq = [...new Set(LEG.flat().filter(Boolean))];
+  const atlas = canvasTex(1024, 1024, (c) => {
+    c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle";
+    uniq.forEach((s, i) => {
+      const size = s.length === 1 ? 30 : s.length <= 3 ? 19 : 15;
+      c.font = `600 ${size}px "Helvetica Neue", Arial, sans-serif`;
+      c.fillText(s, (i % 16) * 64 + 32, Math.floor(i / 16) * 64 + 33);
+    });
+  });
+  const inkDark = new THREE.MeshBasicMaterial({ map: atlas, transparent: true, color: 0x2c3038 });
+  const inkLight = new THREE.MeshBasicMaterial({ map: atlas, transparent: true, color: 0xffffff });
+  function legend(parent, s, x, light) {
+    const i = uniq.indexOf(s), g = new THREE.PlaneGeometry(1.0, 1.0), uv = g.attributes.uv;
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, ((i % 16) + uv.getX(k)) / 16, 1 - (Math.floor(i / 16) + 1 - uv.getY(k)) / 16);
+    const m = new THREE.Mesh(g, light ? inkLight : inkDark);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 1.012, 0); parent.add(m);
+  }
+
+  // Keycaps taper toward the top like real OEM-profile caps
+  const capCache = {};
+  function capGeo(wu) {
+    if (capCache[wu]) return capCache[wu];
+    const w = wu * U - 0.34, d = U - 0.34, h = 1.0;
+    const g = slabGeo(w, d, h, 0.22, 0.12), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const t = Math.max(0, p.getY(i)) / h;
+      p.setX(i, p.getX(i) * (1 - (t * 0.38) / w));
+      p.setZ(i, p.getZ(i) * (1 - (t * 0.38) / d));
+    }
+    g.computeVertexNormals();
+    return (capCache[wu] = g);
+  }
+  const tilt = [0.16, 0.1, 0.04, 0, -0.05, -0.09], lift = [0.3, 0.18, 0.06, 0, 0.05, 0.12];
+  const arrows = ["↑", "←", "↓", "→"];
+  rows.forEach((row, r) => {
+    const rowG = new THREE.Group();
+    rowG.position.set(0, plateTop + lift[r], -5.7 + U / 2 + r * U); rowG.rotation.x = tilt[r]; deck.add(rowG);
+    let cursor = x0, k = 0;
+    row.forEach((w, i) => {
+      if (w < 0) { cursor += -w * U; return; }
+      const s = LEG[r][k++];
+      const isAccent = (r === 0 && i === 0) || s === "Enter" || s === "↵";
+      const m = isAccent ? accent : (r === 0 || w > 1.2 || arrows.includes(s)) ? mod : cap;
+      const cx = cursor + (w * U) / 2;
+      const key = new THREE.Mesh(capGeo(w), m); key.position.x = cx; key.castShadow = key.receiveShadow = true; rowG.add(key);
+      if (s) legend(rowG, s, cx, isAccent);
+      if (s === "F" || s === "J") box(rowG, 0.4, 0.05, 0.06, m, cx, 1.03, 0.36);
+      cursor += w * U;
+    });
+  });
+
+  // Knurled aluminium volume knob
+  const metal = mat(0xb3b9c2, { roughness: 0.3, metalness: 0.55 });
+  const knob = new THREE.Group(); knob.position.set(x0 + 17.2 * U, plateTop + lift[0], -5.7 + U / 2); deck.add(knob);
+  cyl(knob, 0.95, 0.95, 1.8, metal, 0, 0.9, 0, 48);
+  for (let i = 0; i < 32; i++) {
+    const a = (i / 32) * Math.PI * 2;
+    box(knob, 0.09, 1.5, 0.09, metal, Math.cos(a) * 0.96, 0.9, Math.sin(a) * 0.96).rotation.y = -a;
+  }
+  cyl(knob, 0.8, 0.8, 0.06, mat(0xd4d8de, { roughness: 0.2, metalness: 0.6 }), 0, 1.82, 0, 40);
+  box(knob, 0.1, 0.04, 0.45, dark, 0, 1.86, -0.45);
+
+  for (let i = 0; i < 3; i++) box(deck, 0.35, 0.05, 0.12, basic(i === 0 ? 0x4ade80 : 0xdfe6ff), 11.2 + i * 0.8, 2.42, -6.6).castShadow = false;
+  box(deck, 1.0, 0.36, 0.1, dark, -10, 1.3, -7.32);                 // USB-C port
+  box(deck, 1.4, 0.4, 0.1, mat(0x9aa1ab), -13, 1.3, -7.32);          // mode switch
+  for (const x of [-16, 16]) box(kb, 3, 0.8, 1.2, dark, x, 0.4, -6.2); // flip-out feet
+}
+
+// Mouse: Razer Basilisk V3 X HyperSpeed, a right-handed shell with separate main buttons and a thumb rest
+const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
+{
+  const ease = (keys, t) => {
+    for (let i = 1; i < keys.length; i++) if (t <= keys[i][0]) {
+      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i], u = (t - t0) / (t1 - t0);
+      return v0 + (v1 - v0) * (0.5 - 0.5 * Math.cos(Math.PI * u));
+    }
+    return keys[keys.length - 1][1];
+  };
+  // Profiles from nose (t = 0) to heel (t = 1), in cm
+  const LEN = 12.9, B = 0.3, EXP = 0.62;
+  const WR = [[0, 2.15], [0.1, 2.5], [0.35, 2.42], [0.55, 2.3], [0.78, 2.68], [0.94, 2.35], [1, 1.9]];
+  const WL = [[0, 2.15], [0.1, 2.55], [0.32, 2.45], [0.52, 2.3], [0.76, 2.82], [0.94, 2.4], [1, 1.9]];
+  const FL = [[0, 0], [0.24, 0], [0.42, 0.8], [0.62, 0.9], [0.8, 0.35], [0.93, 0], [1, 0]];
+  const HT = [[0, 1.9], [0.08, 2.55], [0.3, 3.1], [0.55, 3.9], [0.72, 4.15], [0.88, 3.75], [1, 2.7]];
+  // th sweeps the cross-section from the right edge (0) over the top to the thumb side (π)
+  function S(t, th) {
+    const c = Math.cos(th), s = Math.sin(th);
+    const w = c >= 0 ? ease(WR, t) : ease(WL, t) + ease(FL, t) * Math.pow(1 - s, 3);
+    return new THREE.Vector3(
+      Math.sign(c) * Math.pow(Math.abs(c), EXP) * w - 0.22 * Math.sin(Math.PI * t) * s * s,
+      B + Math.pow(Math.max(s, 0), EXP) * ease(HT, t),
+      -LEN / 2 + t * LEN
+    );
+  }
+  function surf(t, th, o = 0) {
+    const e = 1e-3, p = S(t, th);
+    if (!o) return p;
+    const dt = S(Math.min(t + e, 1), th).sub(S(Math.max(t - e, 0), th));
+    const da = S(t, th + e).sub(S(t, th - e));
+    return p.addScaledVector(new THREE.Vector3().crossVectors(da, dt).normalize(), o);
+  }
+
+  // Shell: lofted stations with rounded caps at the nose and heel
+  const NA = 44, NT = 60, CAP = 6, row = NA + 1, stations = [];
+  for (let k = CAP; k >= 1; k--) { const a = (k / CAP) * (Math.PI / 2); stations.push({ t: 0, r: Math.cos(a), dz: -Math.sin(a) * 1.1 }); }
+  for (let i = 0; i <= NT; i++) stations.push({ t: i / NT, r: 1, dz: 0 });
+  for (let k = 1; k <= CAP; k++) { const a = (k / CAP) * (Math.PI / 2); stations.push({ t: 1, r: Math.cos(a), dz: Math.sin(a) * 0.9 }); }
+  const pos = [], idx = [], NS = stations.length;
+  for (const st of stations) {
+    const ay = B + 0.45 * ease(HT, st.t);
+    for (let j = 0; j <= NA; j++) {
+      const p = S(st.t, (j / NA) * Math.PI);
+      pos.push(p.x * st.r, ay + (p.y - ay) * st.r, p.z + st.dz);
+    }
+  }
+  for (let i = 0; i < NS - 1; i++) for (let j = 0; j < NA; j++) {
+    const a = i * row + j, b = a + row, c = b + 1, d = a + 1;
+    idx.push(a, d, b, b, d, c);
+  }
+  const off = pos.length / 3;
+  for (let i = 0; i < NS; i++) for (const j of [0, NA]) { const k = (i * row + j) * 3; pos.push(pos[k], pos[k + 1], pos[k + 2]); }
+  for (let i = 0; i < NS - 1; i++) { const r0 = off + i * 2; idx.push(r0, r0 + 2, r0 + 1, r0 + 2, r0 + 3, r0 + 1); }
+  const bodyG = new THREE.BufferGeometry();
+  bodyG.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  bodyG.setIndex(idx); bodyG.computeVertexNormals();
+  const bodyMesh = new THREE.Mesh(bodyG, mat(0x1c1d21, { roughness: 0.32, metalness: 0.05 }));
+  bodyMesh.castShadow = bodyMesh.receiveShadow = true; ms.add(bodyMesh);
+
+  // Base plate showing as a lip under the shell
+  const outline = [];
+  for (let i = 0; i <= NT; i++) { const p = S(i / NT, 0); outline.push(new THREE.Vector2(p.x * 0.985, -p.z)); }
+  for (let i = NT; i >= 0; i--) { const p = S(i / NT, Math.PI); outline.push(new THREE.Vector2(p.x * 0.985, -p.z)); }
+  const baseG = new THREE.ExtrudeGeometry(new THREE.Shape(outline), { depth: B + 0.05, bevelEnabled: false });
+  baseG.rotateX(-Math.PI / 2);
+  const base = new THREE.Mesh(baseG, mat(0x2c2f35, { roughness: 0.6 })); base.castShadow = true; ms.add(base);
+
+  // Raised panels that follow the shell: main buttons, DPI, thumb buttons, rubber grips
+  function patch(t0, t1, a0, a1, o, m, { dip = 0, wall = 0.12, nu = 18, nv = 26 } = {}) {
+    const A0 = typeof a0 === "function" ? a0 : () => a0, A1 = typeof a1 === "function" ? a1 : () => a1;
+    const P = (u, v, off) => {
+      const th = A0(v) + (A1(v) - A0(v)) * u;
+      return surf(t0 + (t1 - t0) * v, th, off - dip * Math.sin(Math.PI * u) * Math.sin(Math.PI * v));
+    };
+    const p = [], uv = [], ix = [], rw = nu + 1;
+    for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) { const q = P(i / nu, j / nv, o); p.push(q.x, q.y, q.z); uv.push(i / nu, j / nv); }
+    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * rw + i, b = a + rw; ix.push(a, a + 1, b, b, a + 1, b + 1); }
+    const ring = [];
+    for (let i = 0; i <= nu; i++) ring.push([i / nu, 0]);
+    for (let j = 1; j <= nv; j++) ring.push([1, j / nv]);
+    for (let i = nu - 1; i >= 0; i--) ring.push([i / nu, 1]);
+    for (let j = nv - 1; j >= 1; j--) ring.push([0, j / nv]);
+    const w0 = p.length / 3;
+    ring.forEach(([u, v]) => { const a = P(u, v, o), b = P(u, v, o - wall); p.push(a.x, a.y, a.z, b.x, b.y, b.z); uv.push(u, v, u, v); });
+    for (let k = 0; k < ring.length; k++) { const a = w0 + k * 2, b = w0 + ((k + 1) % ring.length) * 2; ix.push(a, a + 1, b, b, a + 1, b + 1); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(ix); g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, m); mesh.castShadow = mesh.receiveShadow = true; ms.add(mesh);
+    return mesh;
+  }
+  const btnM = mat(0x24252a, { roughness: 0.55, side: THREE.DoubleSide });
+  const trimM = mat(0x34373e, { roughness: 0.45, side: THREE.DoubleSide });
+  // The split between the buttons widens around the scroll wheel
+  const gap = (v) => { const t = v * 0.42; return Math.PI * (0.0015 + (t > 0.05 && t < 0.3 ? 0.02 * Math.sin((Math.PI * (t - 0.05)) / 0.25) : 0)); };
+  patch(0, 0.42, Math.PI * 0.25, (v) => Math.PI / 2 - gap(v), 0.06, btnM, { dip: 0.05 });
+  patch(0, 0.42, (v) => Math.PI / 2 + gap(v), Math.PI * 0.75, 0.06, btnM, { dip: 0.05 });
+  patch(0.45, 0.51, Math.PI * 0.47, Math.PI * 0.53, 0.05, trimM, { dip: -0.03, nu: 8, nv: 8 });
+  patch(0.31, 0.43, Math.PI * 0.77, Math.PI * 0.86, 0.07, trimM, { dip: -0.04, nu: 10, nv: 12 });
+  patch(0.445, 0.565, Math.PI * 0.77, Math.PI * 0.86, 0.07, trimM, { dip: -0.04, nu: 10, nv: 12 });
+
+  const gripTex = canvasTex(64, 64, (c, w, h) => {
+    c.fillStyle = "#101114"; c.fillRect(0, 0, w, h); c.fillStyle = "#2a2c32";
+    for (const [x, y] of [[16, 16], [48, 48]]) { c.beginPath(); c.moveTo(x, y - 12); c.lineTo(x + 12, y); c.lineTo(x, y + 12); c.lineTo(x - 12, y); c.fill(); }
+  });
+  gripTex.wrapS = gripTex.wrapT = THREE.RepeatWrapping; gripTex.repeat.set(5, 12);
+  const gripM = new THREE.MeshStandardMaterial({ map: gripTex, roughness: 0.95, side: THREE.DoubleSide });
+  patch(0.6, 0.8, Math.PI * 0.74, Math.PI * 0.9, 0.025, gripM, { wall: 0.05, nu: 12, nv: 16 });
+  patch(0.35, 0.8, Math.PI * 0.08, Math.PI * 0.3, 0.025, gripM, { wall: 0.05, nu: 12, nv: 24 });
+
+  // Scroll wheel in its slot: rubber tread and a thin Chroma ring
+  const wp = surf(0.17, Math.PI / 2), wq = surf(0.19, Math.PI / 2);
+  const slope = Math.atan2(wq.y - wp.y, wq.z - wp.z);
+  const slot = new THREE.Mesh(slabGeo(1.0, 2.6, 0.6, 0.45, 0.12), mat(0x07080a, { roughness: 1 }));
+  slot.position.copy(wp).add(new THREE.Vector3(0, -0.45, 0)); slot.rotation.x = -slope; ms.add(slot);
+  const wheel = new THREE.Group(); wheel.position.copy(wp).add(new THREE.Vector3(0, 0.15, 0)); ms.add(wheel);
+  const rubber = mat(0x2a2d33, { roughness: 0.9 });
+  cyl(wheel, 0.72, 0.72, 0.75, rubber, 0, 0, 0, 40).rotation.z = Math.PI / 2;
+  for (const x of [-0.22, 0.22]) for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2;
+    box(wheel, 0.2, 0.07, 0.07, rubber, x, Math.sin(a) * 0.73, Math.cos(a) * 0.73).rotation.x = -a;
+  }
+  cyl(wheel, 0.735, 0.735, 0.08, basic(0x44d62c), 0, 0, 0, 40).rotation.z = Math.PI / 2;
+  cyl(wheel, 0.3, 0.3, 0.8, mat(0x5a5f68, { metalness: 0.5, roughness: 0.3 }), 0, 0, 0, 16).rotation.z = Math.PI / 2;
+}
+
+// Headset: Logitech G335, with a slim band, elastic suspension strap, oval cups and a flip-up mic
+const hs = part("headset"); hs.position.set(-68, 0, 4); hs.rotation.y = 0.55;
+{
+  const shellM = mat(0x202226, { roughness: 0.45 });
+  const matte = mat(0x2c2f35, { roughness: 0.8 });
+  const foam = mat(0x3b3e45, { roughness: 1 });
+  const strap = mat(0x6b7280, { roughness: 0.9 });
+  const metal = mat(0xaeb4bd, { roughness: 0.3, metalness: 0.55 });
+
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(9.8, 0.42, 12, 64, Math.PI), shellM);
+  arc.scale.z = 2.2; arc.position.y = 13.2; arc.castShadow = true; hs.add(arc);
+  const sus = new THREE.Mesh(new THREE.TorusGeometry(8.2, 0.18, 8, 48, Math.PI * 0.72), strap);
+  sus.rotation.z = Math.PI * 0.14; sus.scale.z = 6; sus.position.y = 13.2; sus.castShadow = true; hs.add(sus);
+  for (const a of [Math.PI * 0.14, Math.PI * 0.86]) {
+    const clip = box(hs, 0.6, 0.8, 2.4, matte, Math.cos(a) * 9.0, 13.2 + Math.sin(a) * 9.0, 0);
+    clip.rotation.z = a;
+  }
+
+  for (const s of [-1, 1]) {
+    box(hs, 0.35, 3.2, 0.9, metal, s * 9.8, 11.6, 0);                 // slider
+    box(hs, 0.7, 1.4, 1.2, shellM, s * 9.8, 9.9, 0);                  // yoke
+    const cup = cyl(hs, 4.2, 4.2, 2.4, shellM, s * 10.6, 4.8, 0, 48); cup.rotation.z = Math.PI / 2; cup.scale.set(1.12, 1, 0.9);
+    const plate = cyl(hs, 3.2, 3.2, 0.25, matte, s * 11.9, 4.8, 0, 40); plate.rotation.z = Math.PI / 2; plate.scale.set(1.12, 1, 0.9);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.1, 8, 48), matte);
+    ring.rotation.y = Math.PI / 2; ring.scale.set(1.12, 1.12, 0.9); ring.position.set(s * 11.82, 4.8, 0); hs.add(ring);
+    const pad = new THREE.Mesh(new THREE.TorusGeometry(3.0, 1.2, 14, 40), foam);
+    pad.rotation.y = Math.PI / 2; pad.scale.set(1, 1.12, 0.92); pad.position.set(s * 8.4, 4.8, 0); pad.castShadow = true; hs.add(pad);
+    const cloth = cyl(hs, 2.9, 2.9, 0.2, mat(0x17181b, { roughness: 1 }), s * 9.25, 4.8, 0, 36); cloth.rotation.z = Math.PI / 2; cloth.scale.set(1.12, 1, 0.9);
+  }
+  cyl(hs, 0.55, 0.55, 0.5, matte, -10.6, 7.2, -3.6, 24).rotation.z = Math.PI / 2; // volume roller
+
+  // Flip-to-mute boom mic
+  cyl(hs, 0.55, 0.55, 0.7, matte, -10.6, 6.0, 3.4, 24).rotation.z = Math.PI / 2;
+  const boom = new THREE.CatmullRomCurve3([new THREE.Vector3(-10.9, 6.0, 3.6), new THREE.Vector3(-11.1, 4.8, 7.6), new THREE.Vector3(-10.4, 2.6, 11.2)]);
+  const boomMesh = new THREE.Mesh(new THREE.TubeGeometry(boom, 24, 0.22, 8, false), shellM); boomMesh.castShadow = true; hs.add(boomMesh);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), foam); tip.scale.set(1, 1, 1.6); tip.position.set(-10.35, 2.45, 11.5); hs.add(tip);
+
+  // 3.5 mm cable
+  const cable = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-10.6, 1.2, -1.5), new THREE.Vector3(-10.6, 0.25, -4), new THREE.Vector3(-8, 0.22, -12),
+    new THREE.Vector3(-2, 0.22, -18), new THREE.Vector3(6, 0.22, -21)
+  ]);
+  hs.add(new THREE.Mesh(new THREE.TubeGeometry(cable, 60, 0.18, 8, false), matte));
+  cyl(hs, 0.3, 0.3, 2.2, metal, 7, 0.3, -21.2, 12).rotation.z = Math.PI / 2;
+}
+/* ---------- Slides ---------- */
+const ORDER = ["overview", ...PARTS.map((p) => p.id)];
+const SHORT = {
+  cpu: "Ryzen 5 7600X", cooler: "ID-Cooling SE-214-XT V2", mobo: "ROG Crosshair X870E Hero", gpu: "GeForce RTX 5080 FE",
+  case: "Antec C8", ram: "Vengeance RGB RS 32GB", ssd: "Ediloca 512GB NVMe", psu: "Rosewill VMG 750W Gold",
+  mouse: "Basilisk V3 X HyperSpeed", monitor: "Odyssey G5 32″ QHD", keyboard: "AULA S99", headset: "Logitech G335"
+};
+const KEEP = { case: ["case", "mobo", "cpu", "cooler", "gpu", "ram", "ssd", "psu"], mobo: ["mobo", "cpu"] };
+const ELEV = { keyboard: 0.62, mouse: 0.55, monitor: 0.12, mobo: 0.18, ssd: 0.5, cpu: 0.5, psu: 0.42, case: 0.3 };
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const byId = Object.fromEntries(PARTS.map((p) => [p.id, p]));
+
+const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+const total = PARTS.reduce((s, p) => s + (p.price || 0), 0);
+
+// Ghosting: every material in a part fades together
+const pickables = [], matRecs = {}, meshRecs = {}, vis = {}, visGoal = {};
+scene.updateMatrixWorld(true);
+for (const id in groups) {
+  const mats = new Map(), meshes = [];
+  groups[id].traverse((o) => {
+    if (!o.isMesh) return;
+    o.userData.part = id; meshes.push({ o, cast: o.castShadow });
+    if (o.visible && !o.userData.noPick) pickables.push(o);
+    if (!mats.has(o.material)) mats.set(o.material, { m: o.material, op: o.material.opacity, tr: o.material.transparent });
+  });
+  matRecs[id] = [...mats.values()]; meshRecs[id] = meshes; vis[id] = 1; visGoal[id] = 1;
+}
+function applyVis(id, v) {
+  for (const r of matRecs[id]) {
+    const t = r.tr || v < 0.995;
+    if (r.m.transparent !== t) { r.m.transparent = t; r.m.needsUpdate = true; }
+    r.m.opacity = r.op * v;
+    r.m.depthWrite = !r.tr && v > 0.6;
+  }
+  for (const r of meshRecs[id]) r.o.castShadow = r.cast && v > 0.5;
+}
+
+/* ---------- Camera ---------- */
+const cam = { target: new THREE.Vector3(), dist: 300, el: 0.3, az: 0 };
+const goal = { target: new THREE.Vector3(), el: 0.3, az: 0, radius: 10, size: new THREE.Vector3() };
+let index = 0, zoom = 1, lastInteract = -10, elapsed = 0;
+const wrapPi = (a) => ((((a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+
+function layout() {
+  const w = innerWidth, h = innerHeight, mobile = w <= 760;
+  return { w, h, fx: mobile ? 0.5 : 0.35, fy: mobile ? 0.3 : 0.47, availW: mobile ? 0.9 : 0.58, availH: mobile ? 0.42 : 0.7 };
+}
+function halfAngles() {
+  const L = layout(), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+  return { v: tv * L.availH, h: tv * (L.w / L.h) * L.availW };
+}
+function goalDistance() {
+  const a = halfAngles();
+  if (ORDER[index] === "overview") {
+    const s = goal.size;
+    return (Math.max((s.x / 2) / (a.h * 0.82), (s.y / 2) / a.v) + s.z / 2) * 1.08;
+  }
+  return Math.max((goal.radius / Math.sin(Math.atan(Math.min(a.v, a.h)))) * 0.95, 12);
+}
+function resize() {
+  const L = layout();
+  renderer.setSize(L.w, L.h);
+  camera.aspect = L.w / L.h;
+  camera.setViewOffset(L.w, L.h, L.w * (0.5 - L.fx), L.h * (0.5 - L.fy), L.w, L.h);
+}
+
+function setSlide(i) {
+  index = i; zoom = 1;
+  const id = ORDER[i];
+  const keep = id === "overview" ? Object.keys(groups) : (KEEP[id] || [id]);
+  for (const g in groups) visGoal[g] = keep.includes(g) ? 1 : 0.03;
+  const b = new THREE.Box3();
+  (id === "overview" ? Object.keys(groups) : [id]).forEach((g) => b.expandByObject(groups[g]));
+  const sphere = b.getBoundingSphere(new THREE.Sphere());
+  goal.target.copy(sphere.center);
+  goal.radius = Math.max(sphere.radius, 4);
+  b.getSize(goal.size);
+  goal.el = id === "overview" ? 0.3 : (ELEV[id] ?? 0.32);
+  const startAz = id === "overview" ? 0.18 : 0.4;
+  cam.az = startAz + wrapPi(cam.az - startAz);
+  goal.az = startAz;
+  lastInteract = -10;
+}
+
+/* ---------- Panel + nav ---------- */
+const panel = document.getElementById("panel");
+const prevBtn = document.getElementById("prev"), nextBtn = document.getElementById("next");
+const slideLabel = document.getElementById("slideLabel"), dotsEl = document.getElementById("dots");
+const tip = document.getElementById("tip");
+let swapTimer;
+
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function overviewHTML() {
+  const rows = PARTS.map((p, i) => `<li><button type="button" data-go="${i + 1}"><span class="n"><em>${p.type}</em>${esc(SHORT[p.id])}</span><span class="p">${p.price == null ? "—" : money(p.price)}</span></button></li>`).join("");
+  return `<div class="eyebrow"><span class="slot">Build sheet</span><span>${PARTS.length} parts</span></div>
+    <div class="ptype">Competitive gaming PC</div>
+    <h1>RTX 5080 Build</h1>
+    <p class="lead">Click any part in the model, or step through each one with the arrows below.</p>
+    <div class="rule"></div>
+    <ul class="parts">${rows}</ul>
+    <div class="total"><span>Total</span><strong>${money(total)}</strong><small>Power supply price not listed, so it isn't included.</small></div>`;
+}
+function partHTML(i) {
+  const p = PARTS[i - 1];
+  return `<div class="eyebrow"><span class="slot">${esc(p.slot)}</span><span>Part ${i} of ${PARTS.length}</span></div>
+    <div class="ptype">${p.type}</div>
+    <h1>${esc(p.name)}</h1>
+    <div class="price">${p.price == null ? "<small>Price not listed</small>" : `<strong>${money(p.price)}</strong>`}</div>
+    <div class="rule"></div>
+    <ul class="points">${p.points.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
+}
+function renderPanel(animate) {
+  const html = index === 0 ? overviewHTML() : partHTML(index);
+  const commit = () => {
+    panelInner.innerHTML = html; panel.scrollTop = 0;
+    panelInner.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => goTo(+b.dataset.go)));
+    panel.classList.remove("swap");
+  };
+  clearTimeout(swapTimer);
+  if (!animate || reduced) return commit();
+  panel.classList.add("swap");
+  swapTimer = setTimeout(commit, 220);
+}
+ORDER.forEach((id, i) => {
+  const d = document.createElement("button");
+  d.type = "button"; d.setAttribute("aria-label", i === 0 ? "Overview" : PARTS[i - 1].type);
+  d.addEventListener("click", () => goTo(i));
+  dotsEl.appendChild(d);
+});
+function updateNav() {
+  prevBtn.disabled = index === 0;
+  nextBtn.disabled = index === ORDER.length - 1;
+  slideLabel.textContent = index === 0 ? "Overview" : `${String(index).padStart(2, "0")} / ${PARTS.length} · ${PARTS[index - 1].type}`;
+  [...dotsEl.children].forEach((d, i) => d.classList.toggle("on", i === index));
+}
+function goTo(i, animate = true) {
+  i = Math.max(0, Math.min(ORDER.length - 1, i));
+  if (i === index && animate) return;
+  setSlide(i); renderPanel(animate); updateNav();
+  try { history.replaceState(null, "", "#" + ORDER[i]); } catch (e) {}
+}
+prevBtn.addEventListener("click", () => goTo(index - 1));
+nextBtn.addEventListener("click", () => goTo(index + 1));
+addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") goTo(index + 1);
+  else if (e.key === "ArrowLeft") goTo(index - 1);
+  else if (e.key === "Escape") goTo(0);
+});
+
+/* ---------- Pointer ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const canvas = renderer.domElement;
+function pick(ev) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(pickables, false);
+  if (!hits.length) return null;
+  return (hits.find((h) => vis[h.object.userData.part] > 0.5) || hits[0]).object.userData.part;
+}
+let down = null;
+canvas.addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: false }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener("pointermove", (e) => {
+  if (down) {
+    if (!down.drag && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) { down.drag = true; tip.hidden = true; }
+    if (down.drag) {
+      const dx = e.clientX - down.lx, dy = e.clientY - down.ly;
+      goal.az -= dx * 0.006; cam.az -= dx * 0.006;
+      goal.el = Math.max(-0.05, Math.min(1.3, goal.el + dy * 0.004));
+      lastInteract = elapsed;
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+    return;
+  }
+  if (e.pointerType !== "mouse") return;
+  const id = pick(e);
+  canvas.style.cursor = id ? "pointer" : "grab";
+  if (id) {
+    tip.textContent = `${byId[id].type} · ${SHORT[id]}`;
+    tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.hidden = false;
+  } else tip.hidden = true;
+});
+canvas.addEventListener("pointerup", (e) => {
+  if (down && !down.drag) {
+    const id = pick(e);
+    if (id) goTo(ORDER.indexOf(id));
+  }
+  down = null;
+});
+canvas.addEventListener("pointerleave", () => { tip.hidden = true; });
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  zoom = Math.max(0.45, Math.min(2.2, zoom * (1 + e.deltaY * 0.001)));
+  lastInteract = elapsed;
+}, { passive: false });
+
+/* ---------- Boot + loop ---------- */
+addEventListener("resize", resize);
+resize();
+const startId = decodeURIComponent(location.hash.slice(1));
+const startIndex = Math.max(0, ORDER.indexOf(startId));
+goTo(startIndex, false);
+cam.target.copy(goal.target); cam.el = goal.el + 0.12; cam.az = goal.az - 0.6; cam.dist = goalDistance() * 1.5;
+
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+  const idle = !down && elapsed - lastInteract > 2.5;
+  const overview = index === 0;
+  if (idle && !reduced) {
+    if (overview) goal.az += (0.18 + 0.32 * Math.sin(elapsed * 0.1) - goal.az) * (1 - Math.exp(-dt * 0.4));
+    else goal.az += dt * 0.17;
+  }
+  const k = 1 - Math.exp(-dt * 1.8);
+  cam.target.lerp(goal.target, k);
+  cam.dist += (goalDistance() * zoom - cam.dist) * k;
+  cam.el += (goal.el - cam.el) * k;
+  cam.az += (goal.az - cam.az) * Math.min(1, k * 1.5);
+
+  const c = Math.cos(cam.el);
+  camera.position.set(
+    cam.target.x + cam.dist * c * Math.sin(cam.az),
+    Math.max(1.5, cam.target.y + cam.dist * Math.sin(cam.el)),
+    cam.target.z + cam.dist * c * Math.cos(cam.az)
+  );
+  camera.lookAt(cam.target);
+
+  const kv = 1 - Math.exp(-dt * 4);
+  for (const id in groups) {
+    const before = vis[id];
+    vis[id] += (visGoal[id] - vis[id]) * kv;
+    if (Math.abs(visGoal[id] - vis[id]) < 0.002) vis[id] = visGoal[id];
+    if (vis[id] !== before) applyVis(id, vis[id]);
+  }
+  if (!reduced) {
+    for (const s of spinners) s.rotor.rotation.z += dt * s.speed;
+    for (const t of rgbTextures) t.offset.y = (elapsed * 0.12) % 1;
+    for (const t of rgbTexturesX) t.offset.x = (elapsed * 0.08) % 1;
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
