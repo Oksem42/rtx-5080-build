@@ -115,6 +115,13 @@
   .total span { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
   .total strong { font-family: var(--mono); font-weight: 500; font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; }
   .total small { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+  .prose p { margin: 12px 0 0; font-size: 15px; line-height: 1.6; max-width: 62ch; }
+  .prose h2 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .keyparts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .keyparts button { display: grid; gap: 2px; padding: 8px 12px; border: 1px solid var(--hair); border-radius: 4px; background: #fff; cursor: pointer; font: inherit; color: var(--ink); text-align: left; }
+  .keyparts button:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .keyparts em { font-style: normal; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  .keyparts span { font-size: 13px; }
 
   /* Bottom navigation */
   nav.deck {
@@ -783,20 +790,25 @@ const psu = part("psu", rig);
 // Monitor: Samsung Odyssey G5 32", 1000R curved panel on a V-stand
 const mon = part("monitor"); mon.position.set(-12, 0, -34);
 {
-  const shellM = mat(0x16171a, { roughness: 0.4, metalness: 0.1 });
-  const backM = mat(0x1c1d21, { roughness: 0.28, metalness: 0.1 });
-  const standM = mat(0x232428, { roughness: 0.35, metalness: 0.3 });
-  const darkM = mat(0x08090a, { roughness: 0.8 });
+  const lin = (m) => { m.color.convertSRGBToLinear(); return m; };
+  const shellM = lin(mat(0x141518, { roughness: 0.42, metalness: 0.08 }));
+  const backM = lin(mat(0x18191c, { roughness: 0.3, metalness: 0.1 }));
+  const standM = lin(mat(0x1d1e22, { roughness: 0.32, metalness: 0.35 }));
+  const darkM = lin(mat(0x060607, { roughness: 0.8 }));
   const R = 100, W = 70.8, H = 39.8, T = 1.1, SIDE = 0.7, CHIN = 1.5, y0 = 13;
   const OW = W + SIDE * 2, OH = H + SIDE + CHIN, Lo = OW / R;
 
-  // Solid curved panel: an arc band extruded upward (arc axis sits R cm in front of the screen)
-  const band = new THREE.Shape();
-  band.absarc(0, -R, R, Math.PI / 2 + Lo / 2, Math.PI / 2 - Lo / 2, true);
-  band.absarc(0, -R, R + T, Math.PI / 2 - Lo / 2, Math.PI / 2 + Lo / 2, false);
-  const panelG = new THREE.ExtrudeGeometry(band, { depth: OH, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 2, curveSegments: 72 });
-  panelG.rotateX(-Math.PI / 2);
-  const panel = new THREE.Mesh(panelG, shellM); panel.position.y = y0; panel.castShadow = panel.receiveShadow = true; mon.add(panel);
+  // Arc band helper: radii measured from the curve's axis, which sits R cm in front of the screen
+  function arcBand(r0, r1, ang, height, bevel) {
+    const s = new THREE.Shape();
+    s.absarc(0, -R, r0, Math.PI / 2 + ang / 2, Math.PI / 2 - ang / 2, true);
+    s.absarc(0, -R, r1, Math.PI / 2 - ang / 2, Math.PI / 2 + ang / 2, false);
+    const g = new THREE.ExtrudeGeometry(s, { depth: height, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 72 });
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }
+  const panel = new THREE.Mesh(arcBand(R, R + T, Lo, OH, 0.1), shellM);
+  panel.position.y = y0; panel.castShadow = panel.receiveShadow = true; mon.add(panel);
 
   // Screen image: a match in progress
   const screenTex = canvasTex(1536, 864, (c, w, h) => {
@@ -823,11 +835,9 @@ const mon = part("monitor"); mon.position.set(-12, 0, -34);
     c.strokeStyle = "rgba(255,95,180,.5)"; c.lineWidth = 2;
     for (let i = -16; i <= 16; i++) { c.beginPath(); c.moveTo(sx + i * 18, hz); c.lineTo(sx + i * 170, h); c.stroke(); }
     for (let i = 1; i < 10; i++) { const y = hz + Math.pow(i / 10, 2.2) * (h - hz); c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
-    // Weapon silhouette
     c.fillStyle = "#0a0c16"; c.beginPath();
     c.moveTo(w * 0.6, h); c.lineTo(w * 0.69, h * 0.8); c.lineTo(w * 0.86, h * 0.71); c.lineTo(w * 0.91, h * 0.745); c.lineTo(w * 0.8, h * 0.86); c.lineTo(w * 0.79, h); c.fill();
     c.strokeStyle = "rgba(160,180,255,.35)"; c.lineWidth = 3; c.beginPath(); c.moveTo(w * 0.7, h * 0.805); c.lineTo(w * 0.86, h * 0.72); c.stroke();
-    // HUD
     c.strokeStyle = "#fff"; c.lineWidth = 3;
     [[-26, 0, -9, 0], [9, 0, 26, 0], [0, -26, 0, -9], [0, 9, 0, 26]].forEach(([a, b, d, e]) => { c.beginPath(); c.moveTo(w / 2 + a, h / 2 + b); c.lineTo(w / 2 + d, h / 2 + e); c.stroke(); });
     c.fillStyle = "rgba(8,12,28,.6)"; c.beginPath(); c.arc(120, 120, 88, 0, Math.PI * 2); c.fill();
@@ -851,34 +861,40 @@ const mon = part("monitor"); mon.position.set(-12, 0, -34);
   label(mon, 7, 0.8, textTex([["SAMSUNG", 70]], { w: 512, h: 80, fg: "#aeb3bb" }), 0, y0 + CHIN / 2, 0.22);
   box(mon, 0.35, 0.12, 0.06, basic(0x5fa8ff), 15, y0 + 0.5, R - R * Math.cos(15 / R) + 0.22).castShadow = false;
 
-  // Rear housing with vents and a port strip underneath
-  const housing = new THREE.Mesh(slabGeo(40, 24, 4.2, 5, 1.4), backM);
-  housing.rotation.x = -Math.PI / 2; housing.position.set(0, 33, -0.8); housing.castShadow = true; mon.add(housing);
-  const vents = canvasTex(512, 128, (c, w, h) => {
-    c.fillStyle = "#1c1d21"; c.fillRect(0, 0, w, h); c.fillStyle = "#060607";
-    for (let x = 12; x < w - 8; x += 14) c.fillRect(x, 16, 6, h - 32);
-  });
-  label(mon, 30, 7.5, vents, 0, 40.5, -5.03).rotation.y = Math.PI;
-  box(mon, 14, 0.05, 2.2, darkM, 0, 20.97, -3);
-  for (let i = 0; i < 5; i++) box(mon, 1.4, 0.06, 0.6, mat(0x3a3d44), -5 + i * 2.5, 20.93, -3);
-  cyl(mon, 1.3, 1.3, 11, standM, 0, 30, -6.3, 24).rotation.z = Math.PI / 2; // tilt hinge
+  // Rounded rear housing that follows the curve, with vent slots
+  const HB = 1.2, rBack = R + T + 3.4 + HB;
+  const housing = new THREE.Mesh(arcBand(R + T + 1.0, R + T + 3.4, 44 / R, 24, HB), backM);
+  housing.position.y = 21.2; housing.castShadow = housing.receiveShadow = true; mon.add(housing);
+  for (const y of [42.4, 43.4]) for (let i = -10; i <= 10; i++) {
+    const phi = i * 0.011;
+    const slot = box(mon, 0.7, 0.28, 0.12, darkM, rBack * Math.sin(phi), y, R - rBack * Math.cos(phi));
+    slot.rotation.y = Math.PI - phi; slot.castShadow = false;
+  }
+  box(mon, 12, 0.06, 1.8, darkM, 0, 20.02, -(T + 2.4));                                     // port strip
+  for (let i = 0; i < 5; i++) box(mon, 1.3, 0.06, 0.55, lin(mat(0x3a3d44)), -5 + i * 2.5, 19.98, -(T + 2.4));
+  const mount = new THREE.Mesh(slabGeo(8, 6, 1.2, 1.2, 0.35), standM);                         // stand mount
+  mount.rotation.x = -Math.PI / 2; mount.position.set(0, 33, -(T + 4.55)); mount.castShadow = true; mon.add(mount);
 
-  // Stand: neck with a cable-routing hole, V base
-  const neck = new THREE.Mesh(slabGeo(6.4, 2.6, 28, 1.2, 0.5), standM);
-  neck.position.set(0, 1.2, -7); neck.castShadow = neck.receiveShadow = true; mon.add(neck);
-  const hole = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.22, 10, 32), mat(0x3a3d44, { roughness: 0.3, metalness: 0.5 }));
-  hole.position.set(0, 10, -5.68); mon.add(hole);
-  cyl(mon, 1.3, 1.3, 0.1, darkM, 0, 10, -5.66, 28).rotation.x = Math.PI / 2;
-  const hub = new THREE.Mesh(slabGeo(10, 7, 1.3, 2.8, 0.45), standM); hub.position.set(0, 0, -7); hub.castShadow = hub.receiveShadow = true; mon.add(hub);
-  box(mon, 6, 0.04, 0.3, mat(0x9aa0a8, { roughness: 0.25, metalness: 0.6 }), 0, 1.32, -4.2);
+  // Slim neck leaning up into the mount, with a cable hole
+  const bottom = new THREE.Vector3(0, 1, -14), topPt = new THREE.Vector3(0, 33, -(T + 5.9));
+  const dy = topPt.y - bottom.y, dz = topPt.z - bottom.z, lean = Math.atan2(dz, dy), neckLen = Math.hypot(dy, dz);
+  const neck = new THREE.Mesh(slabGeo(4.2, 1.8, neckLen, 0.9, 0.35), standM);
+  neck.position.copy(bottom); neck.rotation.x = lean; neck.castShadow = neck.receiveShadow = true; mon.add(neck);
+  const holeAt = bottom.clone().add(new THREE.Vector3(0, dy * 0.35, dz * 0.35)).add(new THREE.Vector3(0, -Math.sin(lean) * 0.92, Math.cos(lean) * 0.92));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.18, 10, 32), lin(mat(0x5a5f68, { roughness: 0.3, metalness: 0.5 })));
+  ring.position.copy(holeAt); ring.rotation.x = lean; mon.add(ring);
+  const holeDisk = cyl(mon, 1.0, 1.0, 0.06, darkM, holeAt.x, holeAt.y, holeAt.z, 28); holeDisk.rotation.x = lean + Math.PI / 2;
+
+  // V base
+  const hub = new THREE.Mesh(slabGeo(9, 6, 1.1, 2.5, 0.4), standM); hub.position.set(0, 0, -14); hub.castShadow = hub.receiveShadow = true; mon.add(hub);
   for (const a of [-0.62, 0.62]) {
-    const arm = new THREE.Mesh(slabGeo(3.6, 22, 1.0, 1.8, 0.35), standM);
-    arm.position.set(10.5 * Math.sin(a), 0, -7 + 10.5 * Math.cos(a)); arm.rotation.y = a;
+    const arm = new THREE.Mesh(slabGeo(3.2, 20, 0.9, 1.6, 0.3), standM);
+    arm.position.set(10 * Math.sin(a), 0, -14 + 10 * Math.cos(a)); arm.rotation.y = a;
     arm.castShadow = arm.receiveShadow = true; mon.add(arm);
   }
 
-  // DisplayPort cable down through the neck toward the tower
-  tube(mon, [[3, 21, -3.2], [1.5, 15, -4.6], [0, 10, -5.4], [0, 9.6, -9.5], [0, 1.5, -12], [12, 0.3, -17], [24, 0.3, -19]], 0.28, darkM, 90);
+  // DisplayPort cable from the ports down through the neck
+  tube(mon, [[3, 19.9, -(T + 2.4)], [2.4, 15.5, -6.5], [0.4, holeAt.y, holeAt.z + 0.6], [0, holeAt.y - 0.4, holeAt.z - 2.2], [0, 3, -17], [9, 0.3, -20], [22, 0.3, -22]], 0.26, darkM, 90);
 }
 
 // Desk mat under the keyboard and mouse (scenery, not a clickable part)
@@ -991,132 +1007,101 @@ const kb = part("keyboard"); kb.position.set(-12, MAT_Y, 24);
   for (const x of [-16, 16]) box(kb, 3, 0.8, 1.2, dark, x, 0.4, -6.2); // flip-out feet
 }
 
-// Mouse: Razer Basilisk V3 X HyperSpeed, a right-handed shell with separate main buttons and a thumb rest
+// Mouse: Razer Basilisk V3 X HyperSpeed, one smooth right-handed shell with details placed on its surface
 const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
 {
-  const ease = (keys, t) => {
-    for (let i = 1; i < keys.length; i++) if (t <= keys[i][0]) {
-      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i], u = (t - t0) / (t1 - t0);
-      return v0 + (v1 - v0) * (0.5 - 0.5 * Math.cos(Math.PI * u));
+  const lin = (m) => { m.color.convertSRGBToLinear(); return m; };
+  const shellM = lin(mat(0x1a1b1e, { roughness: 0.38, metalness: 0.05 }));
+  const grooveM = lin(mat(0x030304, { roughness: 1 }));
+  const trimM = lin(mat(0x2e3035, { roughness: 0.45 }));
+  const rubberM = lin(mat(0x26272b, { roughness: 0.9 }));
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const gauss = (x, m, s) => Math.exp(-Math.pow((x - m) / s, 2));
+
+  // u runs from the nose (0) to the heel (1); sizes in cm (130 × 60 × 42 mm)
+  const halfW = (u) => 2.3 + 0.32 * smooth(0.3, 0.8, u) - 0.12 * gauss(u, 0.42, 0.12);
+  const height = (u) => 2.3 + 1.85 * gauss(u, 0.66, 0.36);
+
+  // Deform a dense sphere into the shell: blunt ends, squarish cross-section, flat underside, thumb rest
+  const SEG = 96, RINGS = 64;
+  const g = new THREE.SphereGeometry(1, SEG, RINGS); g.rotateX(Math.PI / 2);
+  const P = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < P.count; i++) {
+    v.fromBufferAttribute(P, i);
+    const u = (v.z + 1) / 2, rr = Math.hypot(v.x, v.y);
+    const e = Math.pow(Math.max(0, 1 - Math.pow(Math.abs(v.z), 2.4)), 1 / 2.4);
+    const cx = rr > 1e-6 ? v.x / rr : 0, cy = rr > 1e-6 ? v.y / rr : 0;
+    const qx = Math.sign(cx) * Math.pow(Math.abs(cx), 0.72), qy = Math.sign(cy) * Math.pow(Math.abs(cy), 0.72);
+    let x = qx * e * halfW(u);
+    const y = qy > 0 ? qy * e * height(u) : qy * e * 0.45;
+    if (qy > 0) x -= 0.25 * qy * qy * Math.sin(Math.PI * u) * e;
+    if (cx < 0) {
+      x -= 0.8 * gauss(u, 0.55, 0.18) * (1 - smooth(-0.2, 0.55, cy)) * e;   // thumb rest
+      x += 0.2 * gauss(u, 0.5, 0.2) * gauss(cy, 0.45, 0.2) * e;             // thumb groove
+    } else {
+      x += 0.18 * gauss(u, 0.62, 0.2) * (1 - smooth(-0.2, 0.4, cy)) * e;    // ring-finger flare
     }
-    return keys[keys.length - 1][1];
+    P.setXYZ(i, x, y + 0.45, v.z * 6.45);
+  }
+  g.computeVertexNormals();
+  const N = g.attributes.normal, n = new THREE.Vector3(), n2 = new THREE.Vector3();
+  for (let iy = 0; iy <= RINGS; iy++) { // stitch the sphere's UV seam so it doesn't show
+    const a = iy * (SEG + 1), b = a + SEG;
+    n.fromBufferAttribute(N, a).add(n2.fromBufferAttribute(N, b)).normalize();
+    N.setXYZ(a, n.x, n.y, n.z); N.setXYZ(b, n.x, n.y, n.z);
+  }
+  const body = new THREE.Mesh(g, shellM);
+  body.castShadow = body.receiveShadow = true;
+
+  // Place details by casting rays at the finished shell (before it joins the group, so coordinates stay local)
+  const rc = new THREE.Raycaster();
+  const hit = (o, d) => { rc.set(o, d); const h = rc.intersectObject(body, false)[0]; return h ? { p: h.point.clone(), n: h.face.normal.clone() } : null; };
+  const top = (x, z) => hit(new THREE.Vector3(x, 20, z), new THREE.Vector3(0, -1, 0));
+  const along = (fn, steps) => { const out = []; for (let k = 0; k <= steps; k++) { const h = fn(k / steps); if (h) out.push(h.p.addScaledVector(h.n, 0.012)); } return out; };
+  const line = (pts, r, m, closed = false) => {
+    if (pts.length < 3) return;
+    ms.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), pts.length * 3, r, 6, closed), m));
   };
-  // Profiles from nose (t = 0) to heel (t = 1), in cm
-  const LEN = 12.9, B = 0.3, EXP = 0.62;
-  const WR = [[0, 2.15], [0.1, 2.5], [0.35, 2.42], [0.55, 2.3], [0.78, 2.68], [0.94, 2.35], [1, 1.9]];
-  const WL = [[0, 2.15], [0.1, 2.55], [0.32, 2.45], [0.52, 2.3], [0.76, 2.82], [0.94, 2.4], [1, 1.9]];
-  const FL = [[0, 0], [0.24, 0], [0.42, 0.8], [0.62, 0.9], [0.8, 0.35], [0.93, 0], [1, 0]];
-  const HT = [[0, 1.9], [0.08, 2.55], [0.3, 3.1], [0.55, 3.9], [0.72, 4.15], [0.88, 3.75], [1, 2.7]];
-  // th sweeps the cross-section from the right edge (0) over the top to the thumb side (π)
-  function S(t, th) {
-    const c = Math.cos(th), s = Math.sin(th);
-    const w = c >= 0 ? ease(WR, t) : ease(WL, t) + ease(FL, t) * Math.pow(1 - s, 3);
-    return new THREE.Vector3(
-      Math.sign(c) * Math.pow(Math.abs(c), EXP) * w - 0.22 * Math.sin(Math.PI * t) * s * s,
-      B + Math.pow(Math.max(s, 0), EXP) * ease(HT, t),
-      -LEN / 2 + t * LEN
-    );
-  }
-  function surf(t, th, o = 0) {
-    const e = 1e-3, p = S(t, th);
-    if (!o) return p;
-    const dt = S(Math.min(t + e, 1), th).sub(S(Math.max(t - e, 0), th));
-    const da = S(t, th + e).sub(S(t, th - e));
-    return p.addScaledVector(new THREE.Vector3().crossVectors(da, dt).normalize(), o);
-  }
+  ms.add(body);
 
-  // Shell: lofted stations with rounded caps at the nose and heel
-  const NA = 44, NT = 60, CAP = 6, row = NA + 1, stations = [];
-  for (let k = CAP; k >= 1; k--) { const a = (k / CAP) * (Math.PI / 2); stations.push({ t: 0, r: Math.cos(a), dz: -Math.sin(a) * 1.1 }); }
-  for (let i = 0; i <= NT; i++) stations.push({ t: i / NT, r: 1, dz: 0 });
-  for (let k = 1; k <= CAP; k++) { const a = (k / CAP) * (Math.PI / 2); stations.push({ t: 1, r: Math.cos(a), dz: Math.sin(a) * 0.9 }); }
-  const pos = [], idx = [], NS = stations.length;
-  for (const st of stations) {
-    const ay = B + 0.45 * ease(HT, st.t);
-    for (let j = 0; j <= NA; j++) {
-      const p = S(st.t, (j / NA) * Math.PI);
-      pos.push(p.x * st.r, ay + (p.y - ay) * st.r, p.z + st.dz);
-    }
-  }
-  for (let i = 0; i < NS - 1; i++) for (let j = 0; j < NA; j++) {
-    const a = i * row + j, b = a + row, c = b + 1, d = a + 1;
-    idx.push(a, d, b, b, d, c);
-  }
-  const off = pos.length / 3;
-  for (let i = 0; i < NS; i++) for (const j of [0, NA]) { const k = (i * row + j) * 3; pos.push(pos[k], pos[k + 1], pos[k + 2]); }
-  for (let i = 0; i < NS - 1; i++) { const r0 = off + i * 2; idx.push(r0, r0 + 2, r0 + 1, r0 + 2, r0 + 3, r0 + 1); }
-  const bodyG = new THREE.BufferGeometry();
-  bodyG.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  bodyG.setIndex(idx); bodyG.computeVertexNormals();
-  const bodyMesh = new THREE.Mesh(bodyG, mat(0x0d0e10, { roughness: 0.4, metalness: 0.05 }));
-  bodyMesh.castShadow = bodyMesh.receiveShadow = true; ms.add(bodyMesh);
+  // Button seams: centre split, rear edge, outer edges
+  line(along((s) => top(0, -6.0 + s * 4.9), 24), 0.04, grooveM);
+  line(along((s) => top(-1.95 + s * 3.9, -1.1), 20), 0.04, grooveM);
+  for (const x of [-1.95, 1.95]) line(along((s) => top(x * (0.85 + 0.15 * s), -5.7 + s * 4.6), 20), 0.04, grooveM);
 
-  // Base plate showing as a lip under the shell
-  const outline = [];
-  for (let i = 0; i <= NT; i++) { const p = S(i / NT, 0); outline.push(new THREE.Vector2(p.x * 0.985, -p.z)); }
-  for (let i = NT; i >= 0; i--) { const p = S(i / NT, Math.PI); outline.push(new THREE.Vector2(p.x * 0.985, -p.z)); }
-  const baseG = new THREE.ExtrudeGeometry(new THREE.Shape(outline), { depth: B + 0.05, bevelEnabled: false });
-  baseG.rotateX(-Math.PI / 2);
-  const base = new THREE.Mesh(baseG, mat(0x1f2126, { roughness: 0.6 })); base.castShadow = true; ms.add(base);
-
-  // Raised panels that follow the shell: main buttons, DPI, thumb buttons, rubber grips
-  function patch(t0, t1, a0, a1, o, m, { dip = 0, wall = 0.12, nu = 18, nv = 26 } = {}) {
-    const A0 = typeof a0 === "function" ? a0 : () => a0, A1 = typeof a1 === "function" ? a1 : () => a1;
-    const P = (u, v, off) => {
-      const th = A0(v) + (A1(v) - A0(v)) * u;
-      return surf(t0 + (t1 - t0) * v, th, off - dip * Math.sin(Math.PI * u) * Math.sin(Math.PI * v));
-    };
-    const p = [], uv = [], ix = [], rw = nu + 1;
-    for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) { const q = P(i / nu, j / nv, o); p.push(q.x, q.y, q.z); uv.push(i / nu, j / nv); }
-    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * rw + i, b = a + rw; ix.push(a, a + 1, b, b, a + 1, b + 1); }
-    const ring = [];
-    for (let i = 0; i <= nu; i++) ring.push([i / nu, 0]);
-    for (let j = 1; j <= nv; j++) ring.push([1, j / nv]);
-    for (let i = nu - 1; i >= 0; i--) ring.push([i / nu, 1]);
-    for (let j = nv - 1; j >= 1; j--) ring.push([0, j / nv]);
-    const w0 = p.length / 3;
-    ring.forEach(([u, v]) => { const a = P(u, v, o), b = P(u, v, o - wall); p.push(a.x, a.y, a.z, b.x, b.y, b.z); uv.push(u, v, u, v); });
-    for (let k = 0; k < ring.length; k++) { const a = w0 + k * 2, b = w0 + ((k + 1) % ring.length) * 2; ix.push(a, a + 1, b, b, a + 1, b + 1); }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
-    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(ix); g.computeVertexNormals();
-    const mesh = new THREE.Mesh(g, m); mesh.castShadow = mesh.receiveShadow = true; ms.add(mesh);
-    return mesh;
+  // Seam where the top shell meets the base
+  const loop = [], c0 = new THREE.Vector3(0, 0.7, 0.3);
+  for (let k = 0; k < 90; k++) {
+    const a = (k / 90) * Math.PI * 2, d = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    const h = hit(c0.clone().addScaledVector(d, 30), d.clone().negate());
+    if (h) loop.push(h.p.addScaledVector(h.n, 0.01));
   }
-  const btnM = mat(0x131417, { roughness: 0.6, side: THREE.DoubleSide });
-  const trimM = mat(0x24262b, { roughness: 0.5, side: THREE.DoubleSide });
-  // The split between the buttons widens around the scroll wheel
-  const gap = (v) => { const t = v * 0.42; return Math.PI * (0.0015 + (t > 0.05 && t < 0.3 ? 0.02 * Math.sin((Math.PI * (t - 0.05)) / 0.25) : 0)); };
-  patch(0, 0.42, Math.PI * 0.25, (v) => Math.PI / 2 - gap(v), 0.06, btnM, { dip: 0.05 });
-  patch(0, 0.42, (v) => Math.PI / 2 + gap(v), Math.PI * 0.75, 0.06, btnM, { dip: 0.05 });
-  patch(0.45, 0.51, Math.PI * 0.47, Math.PI * 0.53, 0.05, trimM, { dip: -0.03, nu: 8, nv: 8 });
-  patch(0.31, 0.43, Math.PI * 0.77, Math.PI * 0.86, 0.07, trimM, { dip: -0.04, nu: 10, nv: 12 });
-  patch(0.445, 0.565, Math.PI * 0.77, Math.PI * 0.86, 0.07, trimM, { dip: -0.04, nu: 10, nv: 12 });
+  line(loop, 0.035, trimM, true);
 
-  const gripTex = canvasTex(64, 64, (c, w, h) => {
-    c.fillStyle = "#101114"; c.fillRect(0, 0, w, h); c.fillStyle = "#2a2c32";
-    for (const [x, y] of [[16, 16], [48, 48]]) { c.beginPath(); c.moveTo(x, y - 12); c.lineTo(x + 12, y); c.lineTo(x, y + 12); c.lineTo(x - 12, y); c.fill(); }
-  });
-  gripTex.wrapS = gripTex.wrapT = THREE.RepeatWrapping; gripTex.repeat.set(5, 12);
-  const gripM = new THREE.MeshStandardMaterial({ map: gripTex, roughness: 0.95, side: THREE.DoubleSide });
-  patch(0.6, 0.8, Math.PI * 0.74, Math.PI * 0.9, 0.025, gripM, { wall: 0.05, nu: 12, nv: 16 });
-  patch(0.35, 0.8, Math.PI * 0.08, Math.PI * 0.3, 0.025, gripM, { wall: 0.05, nu: 12, nv: 24 });
-
-  // Scroll wheel in its slot: rubber tread and a thin Chroma ring
-  const wp = surf(0.17, Math.PI / 2), wq = surf(0.19, Math.PI / 2);
-  const slope = Math.atan2(wq.y - wp.y, wq.z - wp.z);
-  const slot = new THREE.Mesh(slabGeo(1.0, 2.6, 0.6, 0.45, 0.12), mat(0x07080a, { roughness: 1 }));
-  slot.position.copy(wp).add(new THREE.Vector3(0, -0.45, 0)); slot.rotation.x = -slope; ms.add(slot);
-  const wheel = new THREE.Group(); wheel.position.copy(wp).add(new THREE.Vector3(0, 0.15, 0)); ms.add(wheel);
-  const rubber = mat(0x2a2d33, { roughness: 0.9 });
-  cyl(wheel, 0.72, 0.72, 0.75, rubber, 0, 0, 0, 40).rotation.z = Math.PI / 2;
-  for (const x of [-0.22, 0.22]) for (let i = 0; i < 28; i++) {
-    const a = (i / 28) * Math.PI * 2;
-    box(wheel, 0.2, 0.07, 0.07, rubber, x, Math.sin(a) * 0.73, Math.cos(a) * 0.73).rotation.x = -a;
+  // Scroll wheel sitting in a recessed slot
+  const wh = top(0, -3.3), tilt = Math.atan2(wh.n.z, wh.n.y);
+  const slot = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), grooveM);
+  slot.scale.set(0.55, 0.22, 1.4); slot.position.copy(wh.p).addScaledVector(wh.n, -0.05); slot.rotation.x = tilt; ms.add(slot);
+  const wheel = new THREE.Group(); wheel.position.copy(wh.p).addScaledVector(wh.n, 0.12); wheel.rotation.x = tilt; ms.add(wheel);
+  cyl(wheel, 0.66, 0.66, 0.62, rubberM, 0, 0, 0, 40).rotation.z = Math.PI / 2;
+  for (const x of [-0.2, 0.2]) for (let i = 0; i < 30; i++) {
+    const a = (i / 30) * Math.PI * 2;
+    box(wheel, 0.16, 0.06, 0.06, rubberM, x, Math.sin(a) * 0.67, Math.cos(a) * 0.67).rotation.x = -a;
   }
-  cyl(wheel, 0.735, 0.735, 0.08, basic(0x44d62c), 0, 0, 0, 40).rotation.z = Math.PI / 2;
-  cyl(wheel, 0.3, 0.3, 0.8, mat(0x5a5f68, { metalness: 0.5, roughness: 0.3 }), 0, 0, 0, 16).rotation.z = Math.PI / 2;
+  cyl(wheel, 0.675, 0.675, 0.07, basic(0x44d62c), 0, 0, 0, 40).rotation.z = Math.PI / 2;
+
+  // DPI button behind the wheel
+  const dp = top(0, -0.2);
+  const dpi = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), trimM);
+  dpi.scale.set(0.3, 0.12, 0.55); dpi.position.copy(dp.p); dpi.rotation.x = Math.atan2(dp.n.z, dp.n.y); ms.add(dpi);
+
+  // Two thumb buttons on the left flank
+  for (const z of [-0.9, 1.1]) {
+    const s = hit(new THREE.Vector3(-20, 2.5, z), new THREE.Vector3(1, 0, 0));
+    if (!s) continue;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), trimM);
+    b.scale.set(0.14, 0.36, 0.9); b.position.copy(s.p); b.rotation.z = Math.atan2(s.n.y, s.n.x); b.castShadow = true; ms.add(b);
+  }
 }
 
 // Headset: Logitech G335, with a slim band, elastic suspension strap, oval cups and a flip-up mic
@@ -1165,14 +1150,24 @@ const hs = part("headset"); hs.position.set(-68, 0, 4); hs.rotation.y = 0.55;
   cyl(hs, 0.3, 0.3, 2.2, metal, 7, 0.3, -21.2, 12).rotation.z = Math.PI / 2;
 }
 /* ---------- Slides ---------- */
-const ORDER = ["overview", ...PARTS.map((p) => p.id)];
+const ORDER = ["overview", ...PARTS.map((p) => p.id), "how-it-works"];
+const HOW = ORDER.length - 1;
+const HOW_TEXT = {
+  how: [
+    "For my client's gaming PC, the three most important things are the CPU, GPU, and RAM. In gaming, it is important to have fast frames, high graphics, and image rendering.",
+    "The CPU is important for gaming, as it acts as the brain of the PC. It also gives instructions to the GPU, as well as handling NPCs and other characters.",
+    "The GPU is a very important part, as it processes complex visuals, 3D worlds, and, most importantly for a gamer, high frames.",
+    "RAM is also important, as it acts as short-term storage, storing game data that is fed directly to the processor."
+  ],
+  reflection: "Over the period of creating this computer, I have extended my knowledge of hardware. For example, before this I never knew that RAM is better with two sticks, because they can run in dual-channel mode. Another thing I now know is that the CPU impacts gaming a great deal."
+};
 const SHORT = {
   cpu: "Ryzen 5 7600X", cooler: "ID-Cooling SE-214-XT V2", mobo: "ROG Crosshair X870E Hero", gpu: "GeForce RTX 5080 FE",
   case: "Antec C8", ram: "Vengeance RGB RS 32GB", ssd: "Ediloca 512GB NVMe", psu: "Rosewill VMG 750W Gold",
   mouse: "Basilisk V3 X HyperSpeed", monitor: "Odyssey G5 32″ QHD", keyboard: "AULA S99", headset: "Logitech G335"
 };
 const KEEP = { case: ["case", "mobo", "cpu", "cooler", "gpu", "ram", "ssd", "psu"], mobo: ["mobo", "cpu"] };
-const ELEV = { keyboard: 0.62, mouse: 0.55, monitor: 0.12, mobo: 0.18, ssd: 0.5, cpu: 0.5, psu: 0.42, case: 0.3 };
+const ELEV = { keyboard: 0.62, mouse: 0.55, monitor: 0.12, mobo: 0.18, ssd: 0.5, cpu: 0.5, psu: 0.42, case: 0.3, "how-it-works": 0.22 };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const byId = Object.fromEntries(PARTS.map((p) => [p.id, p]));
 
@@ -1234,10 +1229,10 @@ function resize() {
 function setSlide(i) {
   index = i; zoom = 1;
   const id = ORDER[i];
-  const keep = id === "overview" ? Object.keys(groups) : (KEEP[id] || [id]);
+  const keep = id === "overview" ? Object.keys(groups) : id === "how-it-works" ? KEEP.case : (KEEP[id] || [id]);
   for (const g in groups) visGoal[g] = keep.includes(g) ? 1 : 0.03;
   const b = new THREE.Box3();
-  (id === "overview" ? Object.keys(groups) : [id]).forEach((g) => b.expandByObject(groups[g]));
+  (id === "overview" ? Object.keys(groups) : id === "how-it-works" ? KEEP.case : [id]).forEach((g) => b.expandByObject(groups[g]));
   const sphere = b.getBoundingSphere(new THREE.Sphere());
   goal.target.copy(sphere.center);
   goal.radius = Math.max(sphere.radius, 4);
@@ -1265,7 +1260,8 @@ function overviewHTML() {
     <p class="lead">Click any part in the model, or step through each one with the arrows below.</p>
     <div class="rule"></div>
     <ul class="parts">${rows}</ul>
-    <div class="total"><span>Total</span><strong>${money(total)}</strong><small>Power supply price not listed, so it isn't included.</small></div>`;
+    <div class="total"><span>Total</span><strong>${money(total)}</strong><small>Power supply price not listed, so it isn't included.</small></div>
+    <div class="keyparts"><button type="button" data-go="${HOW}"><em>Summary</em><span>How it works and reflection</span></button></div>`;
 }
 function partHTML(i) {
   const p = PARTS[i - 1];
@@ -1276,8 +1272,17 @@ function partHTML(i) {
     <div class="rule"></div>
     <ul class="points">${p.points.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
 }
+function howHTML() {
+  const key = ["cpu", "gpu", "ram"].map((id) => `<button type="button" data-go="${ORDER.indexOf(id)}"><em>${byId[id].type}</em><span>${esc(SHORT[id])}</span></button>`).join("");
+  return `<div class="eyebrow"><span class="slot">The tower</span><span>Summary</span></div>
+    <h1>How it works</h1>
+    <div class="prose">${HOW_TEXT.how.map((t) => `<p>${esc(t)}</p>`).join("")}</div>
+    <div class="keyparts">${key}</div>
+    <div class="rule"></div>
+    <div class="prose"><h2>Reflection</h2><p>${esc(HOW_TEXT.reflection)}</p></div>`;
+}
 function renderPanel(animate) {
-  const html = index === 0 ? overviewHTML() : partHTML(index);
+  const html = index === 0 ? overviewHTML() : index === HOW ? howHTML() : partHTML(index);
   const commit = () => {
     panelInner.innerHTML = html; panel.scrollTop = 0;
     panelInner.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => goTo(+b.dataset.go)));
@@ -1290,14 +1295,14 @@ function renderPanel(animate) {
 }
 ORDER.forEach((id, i) => {
   const d = document.createElement("button");
-  d.type = "button"; d.setAttribute("aria-label", i === 0 ? "Overview" : PARTS[i - 1].type);
+  d.type = "button"; d.setAttribute("aria-label", i === 0 ? "Overview" : i === HOW ? "How it works" : PARTS[i - 1].type);
   d.addEventListener("click", () => goTo(i));
   dotsEl.appendChild(d);
 });
 function updateNav() {
   prevBtn.disabled = index === 0;
   nextBtn.disabled = index === ORDER.length - 1;
-  slideLabel.textContent = index === 0 ? "Overview" : `${String(index).padStart(2, "0")} / ${PARTS.length} · ${PARTS[index - 1].type}`;
+  slideLabel.textContent = index === 0 ? "Overview" : index === HOW ? "How it works" : `${String(index).padStart(2, "0")} / ${PARTS.length} · ${PARTS[index - 1].type}`;
   [...dotsEl.children].forEach((d, i) => d.classList.toggle("on", i === index));
 }
 function goTo(i, animate = true) {
