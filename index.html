@@ -1020,8 +1020,8 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
 
   // u runs from the nose (0) to the heel (1). The body is wide and low at the front,
   // with the hump toward the back; the thumb rest brings total width to about 7.5 cm.
-  const BASE = 0.45, LEN = 13.0;
-  const halfW = (u) => 2.75 + 0.25 * smooth(0.25, 0.75, u) - 0.15 * gauss(u, 0.45, 0.13);
+  const BASE = 0.45, LEN = 11.4, K = LEN / 13; // shortened from the real 13 cm so it reads less elongated
+  const halfW = (u) => 2.85 + 0.25 * smooth(0.25, 0.75, u) - 0.15 * gauss(u, 0.45, 0.13);
   const height = (u) => 2.0 + 1.75 * gauss(u, 0.68, 0.34); // peak 3.75 + base 0.45 ≈ 4.2 cm
 
   const SEG = 96, RINGS = 64;
@@ -1066,12 +1066,12 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
   ms.add(body);
 
   // Button seams: centre split, rear edge, outer edges
-  line(along((s) => top(0, -6.1 + s * 5.1), 24), 0.04, grooveM);
-  line(along((s) => top(-2.2 + s * 4.4, -1.0), 20), 0.04, grooveM);
-  for (const x of [-2.2, 2.2]) line(along((s) => top(x * (0.85 + 0.15 * s), -5.8 + s * 4.8), 20), 0.04, grooveM);
+  line(along((s) => top(0, K * (-6.1 + s * 5.1)), 24), 0.04, grooveM);
+  line(along((s) => top(-2.2 + s * 4.4, K * -1.0), 20), 0.04, grooveM);
+  for (const x of [-2.2, 2.2]) line(along((s) => top(x * (0.85 + 0.15 * s), K * (-5.8 + s * 4.8)), 20), 0.04, grooveM);
 
   // Seam where the top shell meets the base
-  const loop = [], c0 = new THREE.Vector3(0, 0.6, 0.3);
+  const loop = [], c0 = new THREE.Vector3(0, 0.6, K * 0.3);
   for (let k = 0; k < 90; k++) {
     const a = (k / 90) * Math.PI * 2, d = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
     const h = hit(c0.clone().addScaledVector(d, 30), d.clone().negate());
@@ -1080,7 +1080,7 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
   line(loop, 0.035, trimM, true);
 
   // Scroll wheel sunk into its slot: only a few millimetres show above the buttons
-  const wh = top(0, -3.4), tilt = Math.atan2(wh.n.z, wh.n.y);
+  const wh = top(0, K * -3.4), tilt = Math.atan2(wh.n.z, wh.n.y);
   const slot = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), grooveM);
   slot.scale.set(0.48, 0.16, 1.2); slot.position.copy(wh.p).addScaledVector(wh.n, -0.04); slot.rotation.x = tilt; ms.add(slot);
   const wheel = new THREE.Group(); wheel.position.copy(wh.p).addScaledVector(wh.n, -0.3); wheel.rotation.x = tilt; ms.add(wheel);
@@ -1091,16 +1091,16 @@ const ms = part("mouse"); ms.position.set(29, MAT_Y, 26); ms.rotation.y = -0.14;
   }
 
   // DPI button just behind the wheel
-  const dp = top(0, -1.7);
+  const dp = top(0, K * -1.7);
   const dpi = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), trimM);
   dpi.scale.set(0.28, 0.1, 0.5); dpi.position.copy(dp.p); dpi.rotation.x = Math.atan2(dp.n.z, dp.n.y); ms.add(dpi);
 
   // Two long thumb buttons above the thumb rest
-  for (const z of [-1.2, 0.7]) {
+  for (const z of [-1.2 * K, 0.7 * K]) {
     const s = hit(new THREE.Vector3(-20, 2.3, z), new THREE.Vector3(1, 0, 0));
     if (!s) continue;
     const b = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), trimM);
-    b.scale.set(0.14, 0.32, 0.88); b.position.copy(s.p); b.rotation.z = Math.atan2(s.n.y, s.n.x); b.castShadow = true; ms.add(b);
+    b.scale.set(0.14, 0.32, 0.76); b.position.copy(s.p); b.rotation.z = Math.atan2(s.n.y, s.n.x); b.castShadow = true; ms.add(b);
   }
 }
 
